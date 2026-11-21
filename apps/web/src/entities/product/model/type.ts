@@ -1,10 +1,12 @@
+import { Categoria } from '@/shared/api/generated/models'
+
 export const DEFAULT_PRODUCT_CATEGORIES = [
-  'Bebidas',
-  'Salsas',
-  'Conservas',
-  'Lácteos',
-  'Postres',
-  'Envases',
+  Categoria.Bebidas,
+  Categoria.Salsas,
+  Categoria.Conservas,
+  Categoria.Lácteos,
+  Categoria.Postres,
+  Categoria.Envases,
 ] as const
 
 export interface Product {

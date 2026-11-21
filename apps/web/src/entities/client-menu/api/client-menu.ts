@@ -1,11 +1,10 @@
 import 'server-only'
 
 import type { Models } from 'node-appwrite'
-import { DATABASE_ID, Query, TABLE_PLATOS_ID, TABLE_PRODUCTOS_ID, tablesDB } from '@/shared/api'
+import { DATABASE_ID, productosGetProductos, Query, TABLE_PLATOS_ID, tablesDB } from '@/shared/api'
 import type { ClientMenu, MenuItem } from '../model/types'
 
 type DishRow = Models.Row & { nombre: string; precio: string | null; foto: string | null; stock: number }
-type ProductRow = Models.Row & { Nombre: string | null; precio: number | null; fotos: string | null; Cantidad: number | null; Categoria: string | null }
 
 async function listRows<T extends Models.Row>(tableId: string, fields: string[]): Promise<T[]> {
   const rows: T[] = []
@@ -47,10 +46,18 @@ async function dishes(): Promise<MenuItem[]> {
 }
 
 async function products(): Promise<MenuItem[]> {
-  const rows = await listRows<ProductRow>(TABLE_PRODUCTOS_ID, ['Nombre', 'precio', 'fotos', 'Cantidad', 'Categoria'])
-  return rows.map(row => ({
-    id: row.$id, type: 'producto', name: row.Nombre?.trim() || 'Producto sin nombre',
-    price: price(row.precio), category: row.Categoria?.trim() || null, photo: Boolean(row.fotos), availability: availability(row.Cantidad),
+  const response = await productosGetProductos()
+  if (response.status !== 200) {
+    throw new Error('No se pudo cargar la carta de productos.')
+  }
+  return response.data.map(row => ({
+    id: String(row.id),
+    type: 'producto',
+    name: row.nombre?.trim() || 'Producto sin nombre',
+    price: price(row.precio),
+    category: row.categoria?.trim() || null,
+    photo: Boolean(row.foto?.trim()),
+    availability: availability(row.stock),
   }))
 }
 

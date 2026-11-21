@@ -9,7 +9,7 @@ class Categoria(Enum):
     CONSERVAS = "Conservas"
     LACTEOS = "Lácteos"
     POSTRES = "Postres"
-    # ENVASES = "Envases"
+    ENVASES = "Envases"
 
 
 @dataclass

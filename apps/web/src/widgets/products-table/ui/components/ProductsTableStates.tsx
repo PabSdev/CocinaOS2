@@ -85,7 +85,7 @@ export function ProductsTableHeader({
         <div className="border-b border-[#8a5700]/16 bg-[#fbf3db] px-5 py-2.5 text-xs font-medium text-[#8a5700]">
           <div className="flex items-center gap-2">
             <HugeiconsIcon icon={Alert02Icon} className="size-4 shrink-0" strokeWidth={2} />
-            <span>No pudimos actualizar el catálogo con Appwrite. Mostrando datos locales en caché.</span>
+            <span>No pudimos actualizar el catálogo con el servidor. Mostrando datos locales en caché.</span>
           </div>
         </div>
       ) : null}

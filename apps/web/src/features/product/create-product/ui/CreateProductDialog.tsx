@@ -12,21 +12,33 @@ import {
   Button,
   Input,
 } from '@/shared/ui'
-import { createProduct, DEFAULT_PRODUCT_CATEGORIES, type Product } from '@/entities/product'
+import {
+  createProduct,
+  DEFAULT_PRODUCT_CATEGORIES,
+  ProductThumbnail,
+  type Product,
+} from '@/entities/product'
 import { toast } from 'sonner'
 import { HugeiconsIcon } from '@hugeicons/react'
-import {
-  Add01Icon,
-  Loading03Icon,
-  ImageAdd01Icon,
-  Cancel01Icon,
-} from '@hugeicons/core-free-icons'
+import { Add01Icon, Cancel01Icon, Loading03Icon } from '@hugeicons/core-free-icons'
 
 interface CreateProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   availableCategories?: string[]
   onCreated?: (product: Product) => void
+}
+
+function isValidOptionalPhotoUrl(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return true
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return true
+  try {
+    const url = new URL(trimmed)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 export function CreateProductDialog({
@@ -36,12 +48,11 @@ export function CreateProductDialog({
   onCreated,
 }: CreateProductDialogProps) {
   const [nombre, setNombre] = useState('')
-  const [categoria, setCategoria] = useState('Bebidas')
+  const [categoria, setCategoria] = useState<string>(DEFAULT_PRODUCT_CATEGORIES[0])
   const [precio, setPrecio] = useState('')
   const [precioCompra, setPrecioCompra] = useState('')
   const [stock, setStock] = useState('0')
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [fotoUrl, setFotoUrl] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<{
     nombre?: string
@@ -49,37 +60,16 @@ export function CreateProductDialog({
     precio?: string
     precioCompra?: string
     stock?: string
+    foto?: string
   }>({})
 
   const nombreInputRef = useRef<HTMLInputElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        toast.error('Formato no compatible. Usa JPG, PNG o WebP.')
-        return
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('La imagen no puede superar 10 MB.')
-        return
-      }
-      setPhotoFile(file)
-      setPreviewUrl(URL.createObjectURL(file))
-    }
-  }
-
-  const handleClearPhoto = () => {
-    setPhotoFile(null)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
+  const officialCategories: readonly string[] = DEFAULT_PRODUCT_CATEGORIES
+  const categoryOptions = availableCategories.filter((cat) =>
+    officialCategories.some((official) => official.toLocaleLowerCase('es') === cat.toLocaleLowerCase('es')),
+  )
+  const displayedCategories =
+    categoryOptions.length > 0 ? categoryOptions : [...DEFAULT_PRODUCT_CATEGORIES]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,14 +79,18 @@ export function CreateProductDialog({
       precio?: string
       precioCompra?: string
       stock?: string
+      foto?: string
     } = {}
 
     if (!nombre.trim()) {
       nextErrors.nombre = 'Introduce el nombre del producto.'
     }
 
-    if (!categoria.trim()) {
-      nextErrors.categoria = 'Selecciona o escribe una categoría.'
+    const isOfficialCategory = officialCategories.some(
+      (cat) => cat.toLocaleLowerCase('es') === categoria.trim().toLocaleLowerCase('es'),
+    )
+    if (!categoria.trim() || !isOfficialCategory) {
+      nextErrors.categoria = 'Selecciona una categoría válida.'
     }
 
     const parsedPrecio = Number.parseFloat(precio.replace(',', '.').replace(/[^0-9.-]/g, ''))
@@ -120,6 +114,10 @@ export function CreateProductDialog({
       nextErrors.stock = 'Introduce una cantidad válida (0 o mayor).'
     }
 
+    if (!isValidOptionalPhotoUrl(fotoUrl)) {
+      nextErrors.foto = 'Introduce una URL válida (http://, https:// o /...).'
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       nombreInputRef.current?.focus()
@@ -135,9 +133,7 @@ export function CreateProductDialog({
       formData.append('precio', parsedPrecio.toString())
       formData.append('precio_compra', parsedPrecioCompra.toString())
       formData.append('stock', numericStock.toString())
-      if (photoFile) {
-        formData.append('foto', photoFile)
-      }
+      formData.append('foto', fotoUrl.trim())
 
       const res = await createProduct(formData)
 
@@ -145,11 +141,11 @@ export function CreateProductDialog({
         toast.success(`Producto "${res.data.nombre}" añadido al catálogo.`)
         onCreated?.(res.data)
         setNombre('')
-        setCategoria('Bebidas')
+        setCategoria(DEFAULT_PRODUCT_CATEGORIES[0])
         setPrecio('')
         setPrecioCompra('')
         setStock('0')
-        handleClearPhoto()
+        setFotoUrl('')
         onOpenChange(false)
       } else {
         toast.error(res.error || 'No se pudo crear el producto.')
@@ -166,7 +162,9 @@ export function CreateProductDialog({
       open={open}
       onOpenChange={(nextOpen) => {
         if (!isSubmitting) {
-          if (!nextOpen) handleClearPhoto()
+          if (!nextOpen) {
+            setErrors({})
+          }
           onOpenChange(nextOpen)
         }
       }}
@@ -220,44 +218,35 @@ export function CreateProductDialog({
             ) : null}
           </div>
 
-          {/* Categoría híbrida (Píldoras sugeridas + Input libre para nuevas categorías) */}
+          {/* Categoría (solo píldoras oficiales del contrato) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label htmlFor="create-product-category" className="text-xs font-semibold text-[#142238]">
+              <span id="create-product-category-label" className="text-xs font-semibold text-[#142238]">
                 Categoría <span className="text-[#962b29]">*</span>
-              </label>
+              </span>
               <span className="text-[11px] text-[#64748b]">
-                Elige una o escribe una nueva
+                Elige una categoría oficial
               </span>
             </div>
-            <Input
-              id="create-product-category"
-              name="categoria"
-              placeholder="Ej. Bebidas, Salsas, Cafés, Vinos..."
-              value={categoria}
-              onChange={(e) => {
-                setCategoria(e.target.value)
-                if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: undefined }))
-              }}
-              disabled={isSubmitting}
-              aria-invalid={Boolean(errors.categoria)}
-              className="h-10 rounded-xl border-[#cbd7e3] bg-white text-[13px]"
-              required
-            />
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              {availableCategories.map((cat) => {
+            <div
+              role="group"
+              aria-labelledby="create-product-category-label"
+              className="flex flex-wrap items-center gap-1.5 pt-0.5"
+            >
+              {displayedCategories.map((cat) => {
                 const isSelected =
                   categoria.trim().toLocaleLowerCase('es') === cat.toLocaleLowerCase('es')
                 return (
                   <button
                     key={cat}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => {
                       setCategoria(cat)
                       if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: undefined }))
                     }}
                     disabled={isSubmitting}
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                       isSelected
                         ? 'border-[#112747] bg-[#112747] text-white'
                         : 'border-[#dce3e9] bg-[#eff4f8] text-[#55667e] hover:border-[#cbd7e3] hover:text-[#112747]'
@@ -364,70 +353,61 @@ export function CreateProductDialog({
             </div>
           </div>
 
-          {/* Fotografía */}
+          {/* Fotografía (URL opcional) */}
           <div className="space-y-1.5">
-            <span className="block text-xs font-semibold text-[#142238]">
-              Fotografía del producto (opcional)
-            </span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              id="create-product-photo"
-              name="foto"
-              accept="image/png, image/jpeg, image/jpg, image/webp"
-              onChange={handlePhotoSelect}
-              className="sr-only"
-              disabled={isSubmitting}
-            />
-
-            {previewUrl ? (
-              <div className="relative flex items-center gap-3 rounded-2xl border border-[#dce3e9] bg-[#eff4f8]/65 p-3">
-                <div className="size-14 shrink-0 overflow-hidden rounded-xl border border-[#dce3e9] bg-white">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={previewUrl}
-                    alt="Previsualización del producto"
-                    className="size-full object-cover object-center"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-[#142238]">
-                    {photoFile?.name}
-                  </p>
-                  <p className="text-xs text-[#55667e]">
-                    {photoFile ? `${(photoFile.size / 1024).toFixed(1)} KB` : ''}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleClearPhoto}
+            <label
+              htmlFor="create-product-photo-url"
+              className="block text-xs font-semibold text-[#142238]"
+            >
+              URL de fotografía (opcional)
+            </label>
+            <div className="flex items-center gap-3">
+              <ProductThumbnail
+                fotoId={fotoUrl.trim() || null}
+                alt={nombre.trim() || 'Previsualización del producto'}
+                size="md"
+              />
+              <div className="relative flex-1">
+                <Input
+                  id="create-product-photo-url"
+                  name="foto"
+                  type="url"
+                  placeholder="https://ejemplo.com/imagen.jpg (opcional)"
+                  value={fotoUrl}
+                  onChange={(e) => {
+                    setFotoUrl(e.target.value)
+                    if (errors.foto) setErrors((prev) => ({ ...prev, foto: undefined }))
+                  }}
                   disabled={isSubmitting}
-                  className="size-8 rounded-full text-[#55667e] hover:bg-[#fdebec] hover:text-[#962b29]"
-                  title="Quitar foto"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-                </Button>
+                  aria-invalid={Boolean(errors.foto)}
+                  className="h-10 rounded-xl border-[#cbd7e3] bg-white pr-9 text-[13px]"
+                />
+                {fotoUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      setFotoUrl('')
+                      if (errors.foto) setErrors((prev) => ({ ...prev, foto: undefined }))
+                    }}
+                    disabled={isSubmitting}
+                    className="absolute right-1.5 top-1/2 size-7 -translate-y-1/2 rounded-full text-[#55667e] hover:bg-[#fdebec] hover:text-[#962b29]"
+                    title="Quitar URL de foto"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
+                  </Button>
+                ) : null}
               </div>
-            ) : (
-              <label
-                htmlFor="create-product-photo"
-                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#cbd7e3] bg-[#eff4f8]/45 px-4 py-5 text-center transition-colors hover:border-[#112747]/40 hover:bg-[#eff4f8] focus-within:border-[#112747]"
-              >
-                <div className="flex size-9 items-center justify-center rounded-full border border-[#dce3e9] bg-white text-[#112747]">
-                  <HugeiconsIcon icon={ImageAdd01Icon} className="size-4" strokeWidth={1.8} />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-[#142238]">
-                    Haz clic para subir una imagen
-                  </p>
-                  <p className="mt-0.5 text-xs text-[#55667e]">
-                    JPG, PNG o WebP hasta 10 MB
-                  </p>
-                </div>
-              </label>
-            )}
+            </div>
+            <p className="text-[11px] text-[#64748b]">
+              Deja este campo vacío si el producto no tiene fotografía.
+            </p>
+            {errors.foto ? (
+              <p role="alert" className="text-xs font-medium text-[#962b29]">
+                {errors.foto}
+              </p>
+            ) : null}
           </div>
 
           <DialogFooter className="gap-2 pt-3 sm:gap-2">

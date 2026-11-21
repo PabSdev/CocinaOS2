@@ -14,4 +14,5 @@ export const Categoria = {
   Conservas: 'Conservas',
   Lácteos: 'Lácteos',
   Postres: 'Postres',
+  Envases: 'Envases',
 } as const;
