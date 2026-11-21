@@ -1,0 +1,44 @@
+{
+  "name": "api",
+  "projectType": "application",
+  "sourceRoot": "apps/api/src",
+  "targets": {
+    "dev": {
+      "command": "uv run uvicorn main:app --app-dir src --reload",
+      "options": {
+        "cwd": "apps/api"
+      },
+      "cache": false
+    },
+    "test": {
+      "command": "uv run pytest",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "lint": {
+      "command": "uv run ruff check --fix",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "check-lint": {
+      "command": "uv run ruff check",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "typecheck": {
+      "command": "uv run basedpyright",
+      "options": {
+        "cwd": "apps/api"
+      }
+    },
+    "openapi": {
+      "command": "uv run python scripts/export_openapi.py",
+      "options": {
+        "cwd": "apps/api"
+      }
+    }
+  }
+}

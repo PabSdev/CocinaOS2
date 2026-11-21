@@ -1,0 +1,22 @@
+fail_fast: true
+repos:
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        entry: ../../nx run api:lint
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: test
+        name: test
+        entry: ../../nx run api:test
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: typecheck
+        name: typecheck
+        entry: ../../nx run api:typecheck
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -1,0 +1,39 @@
+
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv",
+    "python.languageServer": "None",
+    "basedpyright.analysis.extraPaths": ["./apps/api/src"],
+
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.cwd": "${workspaceFolder}/apps/api",
+    "python.testing.pytestArgs": ["tests"],
+
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/*.pyo": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/.basedpyright": true,
+        "**/.coverage": true,
+        "**/htmlcov": true,
+        "**/.tox": true,
+        "**/.nox": true,
+        "**/*.egg-info": true
+    },
+
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/.venv": true
+    },
+    "python.terminal.useEnvFile": true
+}

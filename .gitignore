@@ -1,0 +1,78 @@
+
+# =========================
+# Nx
+# =========================
+.nx/installation/
+.nx/cache/
+.nx/workspace-data/
+.nx/self-healing/
+.nx/migrate-runs/
+.nx/polygraph/
+
+# =========================
+# Node.js / Next.js
+# =========================
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Python / FastAPI
+# =========================
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+
+# Python tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.basedpyright/
+.tox/
+.nox/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# =========================
+# AI development tools
+# =========================
+.claude/worktrees/
+.claude/settings.local.json
+.codex/
+.gemini/
+
+# =========================
+# macOS / IDE
+# =========================
+.DS_Store
+.idea/
+*.swp
+*.swo
