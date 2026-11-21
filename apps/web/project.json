@@ -1,0 +1,34 @@
+{
+  "name": "web",
+  "projectType": "application",
+  "sourceRoot": "apps/web/src",
+  "targets": {
+    "dev": {
+      "continuous": true,
+      "command": "pnpm run dev",
+      "options": { "cwd": "apps/web" }
+    },
+    "build": {
+      "command": "pnpm run build",
+      "options": { "cwd": "apps/web" }
+    },
+    "start": {
+      "continuous": true,
+      "command": "pnpm run start",
+      "options": { "cwd": "apps/web" }
+    },
+    "lint": {
+      "command": "pnpm run lint",
+      "options": { "cwd": "apps/web" }
+    },
+    "test": {
+      "command": "pnpm run test",
+      "options": { "cwd": "apps/web" }
+    },
+    "generate-api": {
+      "dependsOn": ["api:openapi"],
+      "command": "pnpm run generate:api",
+      "options": { "cwd": "apps/web" }
+    }
+  }
+}
