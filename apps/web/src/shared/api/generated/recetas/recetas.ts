@@ -6,11 +6,9 @@
  */
 import type {
   HTTPValidationError,
-  RecetaCreate,
   RecetaEscandalloResponse,
   RecetaPlatoSyncRequest,
   RecetaResponse,
-  RecetaUpdate,
   RecetasGetRecetasParams
 } from '../models';
 
@@ -86,62 +84,14 @@ export const recetasGetRecetas = async (params?: RecetasGetRecetasParams, option
 );}
 
 
-export type recetasCreateRecetaResponse201 = {
-  data: RecetaResponse
-  status: 201
-}
-
-export type recetasCreateRecetaResponse404 = {
-  data: void
-  status: 404
-}
-
-export type recetasCreateRecetaResponse409 = {
-  data: void
-  status: 409
-}
-
-export type recetasCreateRecetaResponse422 = {
-  data: void
-  status: 422
-}
-
-export type recetasCreateRecetaResponseSuccess = (recetasCreateRecetaResponse201) & {
-  headers: Record<string, string>;
-};
-export type recetasCreateRecetaResponseError = (recetasCreateRecetaResponse404 | recetasCreateRecetaResponse409 | recetasCreateRecetaResponse422) & {
-  headers: Record<string, string>;
-};
-
-export type recetasCreateRecetaResponse = (recetasCreateRecetaResponseSuccess | recetasCreateRecetaResponseError)
-
-export const getRecetasCreateRecetaUrl = () => {
-
-
-
-
-  return `/recetas/`
-}
-
-/**
- * Crea o actualiza (upsert) una línea de receta para un plato e ingrediente.
- * @summary Create Receta
- */
-export const recetasCreateReceta = async (recetaCreate: RecetaCreate, options?: Parameters<typeof customFetch>[1]): Promise<recetasCreateRecetaResponse> => {
-
-  return customFetch<recetasCreateRecetaResponse>(getRecetasCreateRecetaUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
-    body: JSON.stringify(recetaCreate)
-  }
-);}
-
-
 export type recetasGetEscandalloResponse200 = {
   data: RecetaEscandalloResponse
   status: 200
+}
+
+export type recetasGetEscandalloResponse404 = {
+  data: void
+  status: 404
 }
 
 export type recetasGetEscandalloResponse422 = {
@@ -152,7 +102,7 @@ export type recetasGetEscandalloResponse422 = {
 export type recetasGetEscandalloResponseSuccess = (recetasGetEscandalloResponse200) & {
   headers: Record<string, string>;
 };
-export type recetasGetEscandalloResponseError = (recetasGetEscandalloResponse422) & {
+export type recetasGetEscandalloResponseError = (recetasGetEscandalloResponse404 | recetasGetEscandalloResponse422) & {
   headers: Record<string, string>;
 };
 
@@ -232,146 +182,6 @@ export const recetasSyncPlatoReceta = async (platoId: string,
     method: 'PUT',
     headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(recetaPlatoSyncRequest)
-  }
-);}
-
-
-export type recetasGetRecetaByIdResponse200 = {
-  data: RecetaResponse
-  status: 200
-}
-
-export type recetasGetRecetaByIdResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type recetasGetRecetaByIdResponseSuccess = (recetasGetRecetaByIdResponse200) & {
-  headers: Record<string, string>;
-};
-export type recetasGetRecetaByIdResponseError = (recetasGetRecetaByIdResponse422) & {
-  headers: Record<string, string>;
-};
-
-export type recetasGetRecetaByIdResponse = (recetasGetRecetaByIdResponseSuccess | recetasGetRecetaByIdResponseError)
-
-export const getRecetasGetRecetaByIdUrl = (recetaId: string,) => {
-
-
-
-
-  return `/recetas/${recetaId}`
-}
-
-/**
- * Obtiene una línea de receta por su UUID.
- * @summary Get Receta By Id
- */
-export const recetasGetRecetaById = async (recetaId: string, options?: Parameters<typeof customFetch>[1]): Promise<recetasGetRecetaByIdResponse> => {
-
-  return customFetch<recetasGetRecetaByIdResponse>(getRecetasGetRecetaByIdUrl(recetaId),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-export type recetasUpdateRecetaResponse200 = {
-  data: RecetaResponse
-  status: 200
-}
-
-export type recetasUpdateRecetaResponse404 = {
-  data: void
-  status: 404
-}
-
-export type recetasUpdateRecetaResponse409 = {
-  data: void
-  status: 409
-}
-
-export type recetasUpdateRecetaResponse422 = {
-  data: void
-  status: 422
-}
-
-export type recetasUpdateRecetaResponseSuccess = (recetasUpdateRecetaResponse200) & {
-  headers: Record<string, string>;
-};
-export type recetasUpdateRecetaResponseError = (recetasUpdateRecetaResponse404 | recetasUpdateRecetaResponse409 | recetasUpdateRecetaResponse422) & {
-  headers: Record<string, string>;
-};
-
-export type recetasUpdateRecetaResponse = (recetasUpdateRecetaResponseSuccess | recetasUpdateRecetaResponseError)
-
-export const getRecetasUpdateRecetaUrl = (recetaId: string,) => {
-
-
-
-
-  return `/recetas/${recetaId}`
-}
-
-/**
- * Actualiza parcialmente una línea de receta.
- * @summary Update Receta
- */
-export const recetasUpdateReceta = async (recetaId: string,
-    recetaUpdate: RecetaUpdate, options?: Parameters<typeof customFetch>[1]): Promise<recetasUpdateRecetaResponse> => {
-
-  return customFetch<recetasUpdateRecetaResponse>(getRecetasUpdateRecetaUrl(recetaId),
-  {
-    ...options,
-    method: 'PATCH',
-    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
-    body: JSON.stringify(recetaUpdate)
-  }
-);}
-
-
-export type recetasDeleteRecetaResponse204 = {
-  data: void
-  status: 204
-}
-
-export type recetasDeleteRecetaResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type recetasDeleteRecetaResponseSuccess = (recetasDeleteRecetaResponse204) & {
-  headers: Record<string, string>;
-};
-export type recetasDeleteRecetaResponseError = (recetasDeleteRecetaResponse422) & {
-  headers: Record<string, string>;
-};
-
-export type recetasDeleteRecetaResponse = (recetasDeleteRecetaResponseSuccess | recetasDeleteRecetaResponseError)
-
-export const getRecetasDeleteRecetaUrl = (recetaId: string,) => {
-
-
-
-
-  return `/recetas/${recetaId}`
-}
-
-/**
- * Elimina una línea de receta por su UUID.
- * @summary Delete Receta
- */
-export const recetasDeleteReceta = async (recetaId: string, options?: Parameters<typeof customFetch>[1]): Promise<recetasDeleteRecetaResponse> => {
-
-  return customFetch<recetasDeleteRecetaResponse>(getRecetasDeleteRecetaUrl(recetaId),
-  {
-    ...options,
-    method: 'DELETE'
-
-
   }
 );}
 

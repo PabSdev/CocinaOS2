@@ -39,6 +39,12 @@
       "options": {
         "cwd": "apps/api"
       }
+    },
+    "migrate": {
+      "command": "uv run alembic upgrade head",
+      "options": {
+        "cwd": "apps/api"
+      }
     }
   }
 }

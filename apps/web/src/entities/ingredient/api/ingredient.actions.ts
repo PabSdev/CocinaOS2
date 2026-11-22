@@ -11,6 +11,7 @@ import {
   type IngredienteResponse,
   type IngredienteUpdate,
 } from '@/shared/api';
+import { isValidUuid } from '@/shared/lib';
 import { revalidatePath } from 'next/cache';
 import { isPurchasePrice, roundPurchasePrice } from '../model/purchase-price';
 import type {
@@ -26,7 +27,6 @@ const UNITS: readonly UnidadDeMasa[] = [
   UnidadDeMasa.ML,
   UnidadDeMasa.L,
 ];
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class ValidationError extends Error {}
 
@@ -51,7 +51,7 @@ function parseIngredientId(id: string): string {
   if (!cleanId) {
     throw new ValidationError('ID de ingrediente no proporcionado.');
   }
-  if (!UUID_REGEX.test(cleanId)) {
+  if (!isValidUuid(cleanId)) {
     throw new ValidationError('ID de ingrediente no válido.');
   }
   return cleanId;

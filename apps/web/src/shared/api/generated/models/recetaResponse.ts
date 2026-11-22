@@ -9,12 +9,12 @@ import type { RecetaPlatoResumenResponse } from './recetaPlatoResumenResponse';
 import type { UnidadDeMasa } from './unidadDeMasa';
 
 export interface RecetaResponse {
+  id: string;
   plato_id: string;
   ingrediente_id: string;
   cantidad: string;
   unidad: UnidadDeMasa;
   merma_ingrediente_receta?: string | null;
-  id: string;
   created_at: string;
   updated_at: string;
   plato?: RecetaPlatoResumenResponse | null;

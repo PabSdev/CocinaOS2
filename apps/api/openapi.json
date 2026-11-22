@@ -919,45 +919,6 @@
             }
           }
         }
-      },
-      "post": {
-        "tags": [
-          "recetas"
-        ],
-        "summary": "Create Receta",
-        "description": "Crea o actualiza (upsert) una línea de receta para un plato e ingrediente.",
-        "operationId": "recetas-create_receta",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecetaCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecetaResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Plato o ingrediente no encontrado"
-          },
-          "409": {
-            "description": "Conflicto de concurrencia o duplicidad"
-          },
-          "422": {
-            "description": "Error de validación de negocio"
-          }
-        }
       }
     },
     "/recetas/plato/{plato_id}/escandallo": {
@@ -992,14 +953,7 @@
             }
           },
           "404": {
-            "description": "Línea de receta no encontrada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "detail": "Línea de receta no encontrada"
-                }
-              }
-            }
+            "description": "Plato no encontrado"
           },
           "422": {
             "description": "Validation Error",
@@ -1063,156 +1017,6 @@
           },
           "422": {
             "description": "Error de validación de negocio"
-          }
-        }
-      }
-    },
-    "/recetas/{receta_id}": {
-      "get": {
-        "tags": [
-          "recetas"
-        ],
-        "summary": "Get Receta By Id",
-        "description": "Obtiene una línea de receta por su UUID.",
-        "operationId": "recetas-get_receta_by_id",
-        "parameters": [
-          {
-            "name": "receta_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Receta Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecetaResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Línea de receta no encontrada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "detail": "Línea de receta no encontrada"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "recetas"
-        ],
-        "summary": "Update Receta",
-        "description": "Actualiza parcialmente una línea de receta.",
-        "operationId": "recetas-update_receta",
-        "parameters": [
-          {
-            "name": "receta_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Receta Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecetaUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecetaResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Plato o ingrediente no encontrado"
-          },
-          "409": {
-            "description": "Conflicto de concurrencia o duplicidad"
-          },
-          "422": {
-            "description": "Error de validación de negocio"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "recetas"
-        ],
-        "summary": "Delete Receta",
-        "description": "Elimina una línea de receta por su UUID.",
-        "operationId": "recetas-delete_receta",
-        "parameters": [
-          {
-            "name": "receta_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Receta Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "404": {
-            "description": "Línea de receta no encontrada",
-            "content": {
-              "application/json": {
-                "example": {
-                  "detail": "Línea de receta no encontrada"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
         }
       }
@@ -1776,59 +1580,6 @@
         ],
         "title": "ProductoUpdate"
       },
-      "RecetaCreate": {
-        "properties": {
-          "plato_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Plato Id"
-          },
-          "ingrediente_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Ingrediente Id"
-          },
-          "cantidad": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Cantidad"
-          },
-          "unidad": {
-            "$ref": "#/components/schemas/UnidadDeMasa"
-          },
-          "merma_ingrediente_receta": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMaximum": 100.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Merma Ingrediente Receta"
-          }
-        },
-        "type": "object",
-        "required": [
-          "plato_id",
-          "ingrediente_id",
-          "cantidad",
-          "unidad"
-        ],
-        "title": "RecetaCreate"
-      },
       "RecetaEscandalloResponse": {
         "properties": {
           "plato": {
@@ -2058,6 +1809,11 @@
       },
       "RecetaResponse": {
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
           "plato_id": {
             "type": "string",
             "format": "uuid",
@@ -2085,11 +1841,6 @@
               }
             ],
             "title": "Merma Ingrediente Receta"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
           },
           "created_at": {
             "type": "string",
@@ -2124,74 +1875,15 @@
         },
         "type": "object",
         "required": [
+          "id",
           "plato_id",
           "ingrediente_id",
           "cantidad",
           "unidad",
-          "id",
           "created_at",
           "updated_at"
         ],
         "title": "RecetaResponse"
-      },
-      "RecetaUpdate": {
-        "properties": {
-          "ingrediente_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ingrediente Id"
-          },
-          "cantidad": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cantidad"
-          },
-          "unidad": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/UnidadDeMasa"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merma_ingrediente_receta": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMaximum": 100.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Merma Ingrediente Receta"
-          }
-        },
-        "type": "object",
-        "title": "RecetaUpdate"
       },
       "UnidadDeMasa": {
         "type": "string",

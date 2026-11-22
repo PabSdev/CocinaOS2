@@ -10,21 +10,17 @@ from .receta import (
     RecetaConflictError,
     RecetaEscandallo,
     RecetaLinea,
-    RecetaNotFoundError,
     UnidadIncompatibleError,
 )
 from .schema import (
-    RecetaCreate,
     RecetaEscandalloResponse,
     RecetaPlatoSyncRequest,
     RecetaResponse,
-    RecetaUpdate,
 )
 from .service import RecetaService
 
 router = APIRouter(prefix="/recetas", tags=["recetas"])
 
-RECETA_NO_ENCONTRADA = "Línea de receta no encontrada"
 PLATO_NO_ENCONTRADO = "Plato no encontrado"
 INGREDIENTE_NO_ENCONTRADO = "Ingrediente no encontrado"
 CONFLICTO_ESCANDALLO = (
@@ -36,12 +32,9 @@ UNIDAD_INCOMPATIBLE = (
 )
 
 RESPUESTA_404: dict[int | str, dict[str, object]] = {
-    status.HTTP_404_NOT_FOUND: {
-        "description": RECETA_NO_ENCONTRADA,
-        "content": {"application/json": {"example": {"detail": RECETA_NO_ENCONTRADA}}},
-    }
+    status.HTTP_404_NOT_FOUND: {"description": PLATO_NO_ENCONTRADO}
 }
-RESPUESTA_CONFLICTO_VALIDACION: dict[int | str, dict[str, object]] = {
+RESPUESTA_SYNC: dict[int | str, dict[str, object]] = {
     status.HTTP_404_NOT_FOUND: {"description": "Plato o ingrediente no encontrado"},
     status.HTTP_409_CONFLICT: {"description": "Conflicto de concurrencia o duplicidad"},
     status.HTTP_422_UNPROCESSABLE_CONTENT: {
@@ -67,31 +60,6 @@ async def get_recetas(
     return await service.get_recetas(plato_id=plato_id, ingrediente_id=ingrediente_id)
 
 
-@router.post(
-    "/",
-    response_model=RecetaResponse,
-    status_code=status.HTTP_201_CREATED,
-    responses=RESPUESTA_CONFLICTO_VALIDACION,
-)
-async def create_receta(
-    service: ServiceDep,
-    receta: RecetaCreate,
-) -> RecetaLinea:
-    """Crea o actualiza (upsert) una línea de receta para un plato e ingrediente."""
-    try:
-        return await service.create_receta(receta)
-    except PlatoNoExisteError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, PLATO_NO_ENCONTRADO) from exc
-    except IngredienteNoExisteError as exc:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, INGREDIENTE_NO_ENCONTRADO
-        ) from exc
-    except UnidadIncompatibleError as exc:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, UNIDAD_INCOMPATIBLE
-        ) from exc
-
-
 @router.get(
     "/plato/{plato_id}/escandallo",
     response_model=RecetaEscandalloResponse,
@@ -111,7 +79,7 @@ async def get_escandallo(
 @router.put(
     "/plato/{plato_id}",
     response_model=RecetaEscandalloResponse,
-    responses=RESPUESTA_CONFLICTO_VALIDACION,
+    responses=RESPUESTA_SYNC,
 )
 async def sync_plato_receta(
     service: ServiceDep,
@@ -135,62 +103,3 @@ async def sync_plato_receta(
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, UNIDAD_INCOMPATIBLE
         ) from exc
-
-
-@router.get(
-    "/{receta_id}",
-    response_model=RecetaResponse,
-    responses=RESPUESTA_404,
-)
-async def get_receta_by_id(
-    service: ServiceDep,
-    receta_id: UUID,
-) -> RecetaLinea:
-    """Obtiene una línea de receta por su UUID."""
-    try:
-        return await service.get_receta_by_id(receta_id)
-    except RecetaNotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, RECETA_NO_ENCONTRADA) from exc
-
-
-@router.patch(
-    "/{receta_id}",
-    response_model=RecetaResponse,
-    responses=RESPUESTA_CONFLICTO_VALIDACION,
-)
-async def update_receta(
-    service: ServiceDep,
-    receta_id: UUID,
-    receta: RecetaUpdate,
-) -> RecetaLinea:
-    """Actualiza parcialmente una línea de receta."""
-    try:
-        return await service.update_receta(receta_id, receta)
-    except RecetaNotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, RECETA_NO_ENCONTRADA) from exc
-    except IngredienteNoExisteError as exc:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, INGREDIENTE_NO_ENCONTRADO
-        ) from exc
-    except IngredienteDuplicadoEnRecetaError as exc:
-        raise HTTPException(status.HTTP_409_CONFLICT, INGREDIENTE_DUPLICADO) from exc
-    except UnidadIncompatibleError as exc:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, UNIDAD_INCOMPATIBLE
-        ) from exc
-
-
-@router.delete(
-    "/{receta_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses=RESPUESTA_404,
-)
-async def delete_receta(
-    service: ServiceDep,
-    receta_id: UUID,
-) -> None:
-    """Elimina una línea de receta por su UUID."""
-    try:
-        await service.delete_receta(receta_id)
-    except RecetaNotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, RECETA_NO_ENCONTRADA) from exc

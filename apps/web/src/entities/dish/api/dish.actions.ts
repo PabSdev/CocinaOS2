@@ -10,10 +10,9 @@ import {
   type PlatoResponse,
   type PlatoUpdate,
 } from '@/shared/api';
+import { isValidUuid } from '@/shared/lib';
 import { revalidatePath } from 'next/cache';
 import type { ActionResponse, Dish } from '../model/types';
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class ValidationError extends Error {}
 
@@ -32,7 +31,7 @@ function parseDishId(id: string): string {
   if (!cleanId) {
     throw new ValidationError('ID de plato no proporcionado.');
   }
-  if (!UUID_REGEX.test(cleanId)) {
+  if (!isValidUuid(cleanId)) {
     throw new ValidationError('ID de plato no válido.');
   }
   return cleanId;

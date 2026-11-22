@@ -59,10 +59,6 @@ class RecetaEscandallo:
     version: str
 
 
-class RecetaNotFoundError(Exception):
-    """Se lanza cuando no se encuentra la línea de receta solicitada."""
-
-
 class PlatoNoExisteError(Exception):
     """Se lanza cuando el plato asociado a la receta no existe."""
 

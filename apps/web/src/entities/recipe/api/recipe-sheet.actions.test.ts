@@ -1,80 +1,100 @@
-vi.mock('@/shared/api', () => ({ requireKitchenAccess: vi.fn().mockResolvedValue(undefined) }))
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getRecipeSheet, getRecipeSheetDishes, saveRecipeSheet } from './recipe-sheet.actions'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { save, listDishes, get, revalidatePath } = vi.hoisted(() => ({
-  save: vi.fn(),
-  listDishes: vi.fn(),
-  get: vi.fn(),
-  revalidatePath: vi.fn(),
-}))
+const api = vi.hoisted(() => ({
+  platosGetPlatos: vi.fn(),
+  recetasGetEscandallo: vi.fn(),
+  recetasSyncPlatoReceta: vi.fn(),
+}));
+const revalidatePath = vi.hoisted(() => vi.fn());
 
-vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidatePath }))
-vi.mock('./recipe-sheet.repository', () => ({
-  recipeSheetDb: { save, listDishes, get },
-}))
+vi.mock('next/cache', () => ({ revalidatePath }));
+vi.mock('@/shared/api', () => ({
+  requireKitchenAccess: vi.fn().mockResolvedValue(undefined),
+  ...api,
+}));
 
-const input = { dishId: 'plato', price: '6,50', version: 'v1', lines: [] }
+import { getRecipeSheet, getRecipeSheetDishes, saveRecipeSheet } from './recipe-sheet.actions';
 
-describe('acciones de escandallos', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-    vi.resetAllMocks()
-  })
+const DISH_ID = '11111111-1111-4111-8111-111111111111';
+const LINE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const FLOUR_ID = '22222222-2222-4222-8222-222222222222';
 
-  it('obtiene los platos de escandallo delegando en recipeSheetDb.listDishes', async () => {
-    const dishes = [{ $id: 'p1', nombre: 'Pizza' }]
-    listDishes.mockResolvedValueOnce(dishes)
+const platoDto = {
+  id: DISH_ID,
+  nombre: 'Sopa',
+  precio: '5.00',
+  stock: 8,
+  foto: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
 
-    const result = await getRecipeSheetDishes()
-    expect(result).toBe(dishes)
-    expect(listDishes).toHaveBeenCalledOnce()
-  })
+const lineDto = {
+  id: LINE_ID,
+  plato_id: DISH_ID,
+  ingrediente_id: FLOUR_ID,
+  cantidad: '100.0000',
+  unidad: 'G' as const,
+  merma_ingrediente_receta: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
 
-  it('obtiene la ficha técnica delegando en recipeSheetDb.get', async () => {
-    const sheet = { dish: { $id: 'p1' }, lines: [], version: '1' }
-    get.mockResolvedValueOnce(sheet)
+const input = {
+  dishId: DISH_ID,
+  price: '6,50',
+  version: 'v1',
+  lines: [{ id: LINE_ID, ingrediente_id: FLOUR_ID, cantidad: 150, unidad: 'G' as const }],
+};
 
-    const result = await getRecipeSheet('p1')
-    expect(result).toBe(sheet)
-    expect(get).toHaveBeenCalledWith('p1')
-  })
+describe('recipe-sheet.actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.platosGetPlatos.mockResolvedValue({ status: 200, data: [platoDto], headers: {} });
+    api.recetasGetEscandallo.mockResolvedValue({
+      status: 200,
+      data: { plato: platoDto, lineas: [lineDto], version: 'v1' },
+      headers: {},
+    });
+    api.recetasSyncPlatoReceta.mockResolvedValue({
+      status: 200,
+      data: { plato: { ...platoDto, precio: '6.50' }, lineas: [lineDto], version: 'v2' },
+      headers: {},
+    });
+  });
 
-  describe('acción de guardado de escandallos', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-    vi.resetAllMocks()
-  })
+  it('lista platos y carga el escandallo desde FastAPI', async () => {
+    const dishes = await getRecipeSheetDishes();
+    expect(dishes[0].nombre).toBe('Sopa');
 
-  it.each(['production', 'development'])('guarda en %s y actualiza escandallos y platos', async (env) => {
-    vi.stubEnv('NODE_ENV', env)
-    save.mockResolvedValue({})
+    const sheet = await getRecipeSheet(DISH_ID);
+    expect(sheet.dish.precio).toBe('5.00');
+    expect(sheet.lines).toHaveLength(1);
+    expect(sheet.version).toBe('v1');
+  });
 
-    expect(await saveRecipeSheet(input)).toEqual({})
-    expect(save).toHaveBeenCalledExactlyOnceWith(input)
-    expect(revalidatePath.mock.calls).toEqual([['/escandallos'], ['/platos']])
-  })
+  it('guarda escandallo, revalida rutas y propaga conflictos y errores del backend', async () => {
+    expect(await saveRecipeSheet(input)).toEqual({});
+    expect(revalidatePath).toHaveBeenCalledWith('/escandallos');
+    expect(revalidatePath).toHaveBeenCalledWith('/platos');
 
-  it('conserva el error de guardado sin actualizar la vista', async () => {
-    save.mockResolvedValue({ error: 'Conflicto de edición' })
+    api.recetasSyncPlatoReceta.mockResolvedValueOnce({
+      status: 409,
+      data: { detail: 'El plato o la receta han cambiado.' },
+      headers: {},
+    });
+    expect(await saveRecipeSheet(input)).toEqual({ error: 'El plato o la receta han cambiado.' });
 
-    expect(await saveRecipeSheet(input)).toEqual({ error: 'Conflicto de edición' })
-    expect(revalidatePath).not.toHaveBeenCalled()
-  })
+    api.recetasSyncPlatoReceta.mockResolvedValueOnce({
+      status: 422,
+      data: { detail: 'Unidad incompatible' },
+      headers: {},
+    });
+    expect(await saveRecipeSheet(input)).toEqual({ error: 'Unidad incompatible' });
+  });
 
-  it('devuelve un error comprensible si falla la persistencia', async () => {
-    save.mockRejectedValue(new Error('write failed'))
-    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      expect(await saveRecipeSheet(input)).toEqual({
-        error: 'No se pudo confirmar el guardado. El borrador sigue disponible.',
-      })
-      expect(revalidatePath).not.toHaveBeenCalled()
-    } finally {
-      log.mockRestore()
-    }
-  })
-})
-})
-
+  it.each(['-1', 'abc', 'Infinity'])('rechaza PVP inválido %s antes de llamar a la API', async (price) => {
+    expect(await saveRecipeSheet({ ...input, price })).toHaveProperty('error');
+    expect(api.recetasSyncPlatoReceta).not.toHaveBeenCalled();
+  });
+});

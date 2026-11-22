@@ -13,7 +13,6 @@ import {
 import { RecipeSheetHeaderCard } from './cards/RecipeSheetHeaderCard'
 import { RecipeSheetIngredientsCard } from './cards/RecipeSheetIngredientsCard'
 import { RecipeSheetKpisCard } from './cards/RecipeSheetKpisCard'
-import { RecipeSheetProfitabilityCard } from './cards/RecipeSheetProfitabilityCard'
 
 export function RecipeSheetEditor({ dishes, sheet, ingredients }: { dishes: Dish[]; sheet: RecipeSheet; ingredients: Ingredient[] }) {
   const router = useRouter()
@@ -114,7 +113,10 @@ export function RecipeSheetEditor({ dishes, sheet, ingredients }: { dishes: Dish
             onIngredientQueryChange={setIngredientQuery} onAddIngredient={addIngredient} onChangeLine={changeLine}
             onRemoveLine={(localId) => setLines((curr) => curr.filter((item) => item.localId !== localId))}
           />
-          <RecipeSheetProfitabilityCard>
+          <aside
+            aria-label="Food Cost objetivo y métricas de ración"
+            className="min-w-0 space-y-3.5 @min-[62rem]/escandallo:sticky @min-[62rem]/escandallo:top-4"
+          >
             <RecipeSheetKpisCard
               target={target} targetPct={targetPct} validTarget={validTarget} recommendedPrice={recommendedPrice}
               canShowMargin={canShowMargin} cost={cost} price={price} pending={pending}
@@ -129,7 +131,7 @@ export function RecipeSheetEditor({ dishes, sheet, ingredients }: { dishes: Dish
                 }
               }}
             />
-          </RecipeSheetProfitabilityCard>
+          </aside>
         </div>
       </form>
     </div>

@@ -1,4 +1,3 @@
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import Select, delete, func, select, update
@@ -6,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from modules.ingredientes.ingrediente import UnidadDeMasa
-from shared.logger import Logger
 
 from .receta import (
     RecetaIngredienteResumen,
@@ -15,8 +13,6 @@ from .receta import (
 )
 from .receta_model import RecetaORM
 from .schema import RecetaLineaSync
-
-logger = Logger(__name__)
 
 
 def _to_domain_model(receta_orm: RecetaORM) -> RecetaLinea:
@@ -75,66 +71,6 @@ class RecetaRepository:
         query = query.order_by(RecetaORM.created_at.desc(), RecetaORM.id.desc())
         rows = await self._db.scalars(query)
         return [_to_domain_model(item) for item in rows]
-
-    async def get_receta_by_id(self, receta_id: UUID) -> RecetaLinea | None:
-        row = await self._db.scalar(self._base_query().where(RecetaORM.id == receta_id))
-        return _to_domain_model(row) if row is not None else None
-
-    async def get_by_plato_and_ingrediente(
-        self, plato_id: UUID, ingrediente_id: UUID
-    ) -> RecetaLinea | None:
-        row = await self._db.scalar(
-            self._base_query().where(
-                RecetaORM.plato_id == plato_id,
-                RecetaORM.ingrediente_id == ingrediente_id,
-            )
-        )
-        return _to_domain_model(row) if row is not None else None
-
-    async def create_receta(
-        self,
-        plato_id: UUID,
-        ingrediente_id: UUID,
-        cantidad: Decimal,
-        unidad: UnidadDeMasa,
-        merma_ingrediente_receta: Decimal | None,
-    ) -> RecetaLinea:
-        receta_orm = RecetaORM(
-            plato_id=plato_id,
-            ingrediente_id=ingrediente_id,
-            cantidad=cantidad,
-            unidad=unidad.value,
-            merma_ingrediente_receta=merma_ingrediente_receta,
-        )
-        self._db.add(receta_orm)
-        await self._db.flush()
-        logger.debug("Línea de receta insertada con id %s", receta_orm.id)
-        loaded = await self.get_receta_by_id(receta_orm.id)
-        if loaded is None:
-            raise RuntimeError("No se pudo recargar la línea de receta creada.")
-        return loaded
-
-    async def update_receta(
-        self, receta_id: UUID, changes: dict[str, object]
-    ) -> RecetaLinea | None:
-        if not changes:
-            return await self.get_receta_by_id(receta_id)
-
-        updated_id = await self._db.scalar(
-            update(RecetaORM)
-            .where(RecetaORM.id == receta_id)
-            .values(**changes, updated_at=func.now())
-            .returning(RecetaORM.id)
-        )
-        if updated_id is None:
-            return None
-        return await self.get_receta_by_id(updated_id)
-
-    async def delete_receta(self, receta_id: UUID) -> bool:
-        eliminado = await self._db.scalar(
-            delete(RecetaORM).where(RecetaORM.id == receta_id).returning(RecetaORM.id)
-        )
-        return eliminado is not None
 
     async def sync_plato_receta(
         self,

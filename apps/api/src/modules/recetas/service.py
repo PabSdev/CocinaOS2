@@ -3,7 +3,6 @@ from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 
-from modules.ingredientes.ingrediente import UnidadDeMasa
 from modules.ingredientes.repository import IngredienteRepository
 from modules.platos.plato import Plato
 from modules.platos.repository import PlatoRepository
@@ -16,12 +15,11 @@ from .receta import (
     RecetaConflictError,
     RecetaEscandallo,
     RecetaLinea,
-    RecetaNotFoundError,
     UnidadIncompatibleError,
     are_units_compatible,
 )
 from .repository import RecetaRepository
-from .schema import RecetaCreate, RecetaPlatoSyncRequest, RecetaUpdate
+from .schema import RecetaPlatoSyncRequest
 
 
 def build_escandallo_version(plato: Plato, lineas: list[RecetaLinea]) -> str:
@@ -46,121 +44,6 @@ class RecetaService:
             return await RecetaRepository(session).get_recetas(
                 plato_id=plato_id, ingrediente_id=ingrediente_id
             )
-
-    async def get_receta_by_id(self, receta_id: UUID) -> RecetaLinea:
-        async with unit_of_work() as session:
-            receta = await RecetaRepository(session).get_receta_by_id(receta_id)
-        if receta is None:
-            raise RecetaNotFoundError(receta_id)
-        return receta
-
-    async def create_receta(self, payload: RecetaCreate) -> RecetaLinea:
-        async with unit_of_work() as session:
-            plato = await PlatoRepository(session).get_plato_by_id(payload.plato_id)
-            if plato is None:
-                raise PlatoNoExisteError(payload.plato_id)
-
-            ingrediente = await IngredienteRepository(session).get_ingrediente_by_id(
-                payload.ingrediente_id
-            )
-            if ingrediente is None:
-                raise IngredienteNoExisteError(payload.ingrediente_id)
-
-            if not are_units_compatible(payload.unidad, ingrediente.unidad_de_masa):
-                raise UnidadIncompatibleError(
-                    "La unidad de la receta debe ser compatible con la unidad de compra."
-                )
-
-            repo = RecetaRepository(session)
-            existing = await repo.get_by_plato_and_ingrediente(
-                payload.plato_id, payload.ingrediente_id
-            )
-            if existing is not None:
-                updated = await repo.update_receta(
-                    existing.id,
-                    {
-                        "cantidad": payload.cantidad,
-                        "unidad": payload.unidad.value,
-                        "merma_ingrediente_receta": payload.merma_ingrediente_receta,
-                    },
-                )
-                if updated is None:
-                    raise RecetaNotFoundError(existing.id)
-                return updated
-
-            try:
-                return await repo.create_receta(
-                    plato_id=payload.plato_id,
-                    ingrediente_id=payload.ingrediente_id,
-                    cantidad=payload.cantidad,
-                    unidad=payload.unidad,
-                    merma_ingrediente_receta=payload.merma_ingrediente_receta,
-                )
-            except IntegrityError as exc:
-                if getattr(exc.orig, "sqlstate", None) == "23505":
-                    raise IngredienteDuplicadoEnRecetaError(
-                        payload.ingrediente_id
-                    ) from exc
-                raise
-
-    async def update_receta(
-        self, receta_id: UUID, payload: RecetaUpdate
-    ) -> RecetaLinea:
-        changes: dict[str, object] = payload.model_dump(exclude_unset=True)
-        async with unit_of_work() as session:
-            repo = RecetaRepository(session)
-            current = await repo.get_receta_by_id(receta_id)
-            if current is None:
-                raise RecetaNotFoundError(receta_id)
-
-            target_ingrediente_id = (
-                payload.ingrediente_id
-                if payload.ingrediente_id is not None
-                else current.ingrediente_id
-            )
-            target_unidad = (
-                payload.unidad if payload.unidad is not None else current.unidad
-            )
-
-            ingrediente = await IngredienteRepository(session).get_ingrediente_by_id(
-                target_ingrediente_id
-            )
-            if ingrediente is None:
-                raise IngredienteNoExisteError(target_ingrediente_id)
-
-            if not are_units_compatible(target_unidad, ingrediente.unidad_de_masa):
-                raise UnidadIncompatibleError(
-                    "La unidad de la receta debe ser compatible con la unidad de compra."
-                )
-
-            if target_ingrediente_id != current.ingrediente_id:
-                duplicate = await repo.get_by_plato_and_ingrediente(
-                    current.plato_id, target_ingrediente_id
-                )
-                if duplicate is not None and duplicate.id != receta_id:
-                    raise IngredienteDuplicadoEnRecetaError(target_ingrediente_id)
-
-            unidad = changes.get("unidad")
-            if isinstance(unidad, UnidadDeMasa):
-                changes["unidad"] = unidad.value
-
-            try:
-                updated = await repo.update_receta(receta_id, changes)
-            except IntegrityError as exc:
-                if getattr(exc.orig, "sqlstate", None) == "23505":
-                    raise IngredienteDuplicadoEnRecetaError(
-                        target_ingrediente_id
-                    ) from exc
-                raise
-            if updated is None:
-                raise RecetaNotFoundError(receta_id)
-            return updated
-
-    async def delete_receta(self, receta_id: UUID) -> None:
-        async with unit_of_work() as session:
-            eliminado = await RecetaRepository(session).delete_receta(receta_id)
-        if not eliminado:
-            raise RecetaNotFoundError(receta_id)
 
     async def get_escandallo(self, plato_id: UUID) -> RecetaEscandallo:
         async with unit_of_work() as session:
@@ -187,12 +70,14 @@ class RecetaService:
                 raise PlatoNoExisteError(plato_id)
 
             current_lines = await receta_repo.get_recetas(plato_id=plato_id)
-            if payload.expected_version is not None:
-                current_version = build_escandallo_version(plato, current_lines)
-                if current_version != payload.expected_version:
-                    raise RecetaConflictError(
-                        "El plato o la receta han cambiado. Recarga la página antes de volver a guardar."
-                    )
+            if (
+                payload.expected_version is not None
+                and build_escandallo_version(plato, current_lines)
+                != payload.expected_version
+            ):
+                raise RecetaConflictError(
+                    "El plato o la receta han cambiado. Recarga la página antes de volver a guardar."
+                )
 
             current_ids = {line.id for line in current_lines}
             seen_line_ids: set[UUID] = set()
@@ -236,9 +121,17 @@ class RecetaService:
                     raise PlatoNoExisteError(plato_id)
                 updated_plato = plato_after
 
-            updated_lines = await receta_repo.sync_plato_receta(
-                plato_id, current_lines, payload.lineas
-            )
+            try:
+                updated_lines = await receta_repo.sync_plato_receta(
+                    plato_id, current_lines, payload.lineas
+                )
+            except IntegrityError as exc:
+                if getattr(exc.orig, "sqlstate", None) == "23505":
+                    raise RecetaConflictError(
+                        "El plato o la receta han cambiado. Recarga la página antes de volver a guardar."
+                    ) from exc
+                raise
+
             return RecetaEscandallo(
                 plato=updated_plato,
                 lineas=updated_lines,

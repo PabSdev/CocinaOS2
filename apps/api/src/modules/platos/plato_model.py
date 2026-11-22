@@ -12,6 +12,7 @@ from shared.db import Base
 @final
 class PlatoORM(Base):
     __tablename__ = "platos"
+    #usamos argumentos para poder rechazar los precios negativos
     __table_args__ = (
         CheckConstraint("precio >= 0", name="ck_platos_precio_no_negativo"),
         CheckConstraint("stock >= 0", name="ck_platos_stock_no_negativo"),

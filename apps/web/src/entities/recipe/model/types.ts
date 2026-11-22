@@ -1,78 +1,43 @@
-import type { UnidadDeMasa } from '@/shared/api'
+import type { UnidadDeMasa } from '@/shared/api';
 
-export type RecipeUnit = UnidadDeMasa
+export type RecipeUnit = UnidadDeMasa;
 
 export interface RecipeItem {
-  $id: string
-  $createdAt: string
-  $updatedAt: string
-  plato_id: string
-  ingrediente_id: string
-  cantidad: number
-  unidad: RecipeUnit
-  merma_ingrediente_receta?: number | null
-  // Expanded relation data when fetched with select queries
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  plato_id: string;
+  ingrediente_id: string;
+  cantidad: number;
+  unidad: RecipeUnit;
+  merma_ingrediente_receta?: number | null;
   plato?: {
-    $id: string
-    nombre: string
-    precio: string | null
-    foto?: string | null
-    stock: number
-  }
+    $id: string;
+    nombre: string;
+    precio: string | null;
+    foto?: string | null;
+    stock: number;
+  };
   ingrediente?: {
-    $id: string
-    nombre: string
-    descripcion?: string | null
-    stock: number
-    unidad_de_masa: RecipeUnit
-    precio_compra?: number | null
-    merma_habitual?: number | null
-  }
-}
-
-export interface CreateRecipeItemInput {
-  plato_id: string
-  ingrediente_id: string
-  cantidad: number
-  unidad: RecipeUnit
-  merma_ingrediente_receta?: number | null
-}
-
-export interface UpdateRecipeItemInput {
-  cantidad?: number
-  unidad?: RecipeUnit
-  ingrediente_id?: string
-  merma_ingrediente_receta?: number | null
+    $id: string;
+    nombre: string;
+    descripcion?: string | null;
+    stock: number;
+    unidad_de_masa: RecipeUnit;
+    precio_compra?: number | null;
+    merma_habitual?: number | null;
+  };
 }
 
 export interface DishRecipeIngredientInput {
-  ingrediente_id: string
-  cantidad: number
-  unidad: RecipeUnit
-  merma_ingrediente_receta?: number | null
-}
-
-export interface DishStockFeasibility {
-  platoId: string
-  platoNombre: string
-  maxPortionsPossible: number
-  ingredientsRequirement: Array<{
-    ingredienteId: string
-    nombre: string
-    currentStock: number
-    stockUnit: string
-    requiredPerPortion: number
-    grossRequiredPerPortion: number
-    wastagePct: number
-    recipeUnit: RecipeUnit
-    normalizedRequiredPerPortion: number // gross amount normalized to stock unit
-    portionsCanMake: number
-    hasSufficientStock: boolean
-  }>
+  ingrediente_id: string;
+  cantidad: number;
+  unidad: RecipeUnit;
+  merma_ingrediente_receta?: number | null;
 }
 
 export interface ActionResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
+  success: boolean;
+  data?: T;
+  error?: string;
 }

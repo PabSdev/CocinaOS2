@@ -1,6 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Coins01Icon } from '@hugeicons/core-free-icons'
 import type { RecipeEscandalloResult } from '../model/escandallo'
@@ -14,45 +13,20 @@ interface DishProfitabilityTabProps {
   linesCount: number
 }
 
+function getFoodCostBadge(fc: number | null) {
+  if (fc == null) return { label: 'Sin PVP', textColor: 'text-slate-600', bgColor: 'bg-slate-100' }
+  if (fc <= 30) return { label: 'Óptimo (≤ 30 %)', textColor: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200' }
+  if (fc <= 35) return { label: 'Ajustado (30–35 %)', textColor: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200' }
+  return { label: 'Alto (> 35 %)', textColor: 'text-rose-700', bgColor: 'bg-rose-50 border-rose-200' }
+}
+
 export function DishProfitabilityTab({
   escandallo,
   dishPriceGross,
   onApplyPrice,
   linesCount,
 }: DishProfitabilityTabProps) {
-  const foodCostBadge = useMemo(() => {
-    const fc = escandallo.foodCostPct
-    if (fc == null) {
-      return {
-        label: 'Sin PVP',
-        variant: 'secondary' as const,
-        textColor: 'text-slate-600',
-        bgColor: 'bg-slate-100',
-      }
-    }
-    if (fc <= 30) {
-      return {
-        label: 'Óptimo (≤ 30 %)',
-        variant: 'default' as const,
-        textColor: 'text-emerald-700',
-        bgColor: 'bg-emerald-50 border-emerald-200',
-      }
-    }
-    if (fc <= 35) {
-      return {
-        label: 'Ajustado (30–35 %)',
-        variant: 'outline' as const,
-        textColor: 'text-amber-700',
-        bgColor: 'bg-amber-50 border-amber-200',
-      }
-    }
-    return {
-      label: 'Alto (> 35 %)',
-      variant: 'destructive' as const,
-      textColor: 'text-rose-700',
-      bgColor: 'bg-rose-50 border-rose-200',
-    }
-  }, [escandallo.foodCostPct])
+  const foodCostBadge = getFoodCostBadge(escandallo.foodCostPct)
 
   if (linesCount === 0) {
     return (
