@@ -1,4 +1,6 @@
-export type UnidadDeMasa = 'G' | 'KG' | 'ML' | 'L';
+import { UnidadDeMasa } from '@/shared/api/generated/models';
+
+export { UnidadDeMasa };
 
 export interface Ingredient {
   $id: string;

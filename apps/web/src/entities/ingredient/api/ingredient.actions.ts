@@ -1,19 +1,34 @@
 'use server';
 
-import { requireKitchenAccess } from '@/shared/api'
-
-import { ingredientDb } from '@/shared/api/ingredients';
+import {
+  ingredientesCreateIngrediente,
+  ingredientesDeleteIngrediente,
+  ingredientesGetIngredientes,
+  ingredientesUpdateIngrediente,
+  requireKitchenAccess,
+  UnidadDeMasa,
+  type IngredienteCreate,
+  type IngredienteResponse,
+  type IngredienteUpdate,
+} from '@/shared/api';
 import { revalidatePath } from 'next/cache';
 import { isPurchasePrice, roundPurchasePrice } from '../model/purchase-price';
 import type {
   ActionResponse,
   CreateIngredientInput,
   Ingredient,
-  UnidadDeMasa,
   UpdateIngredientInput,
 } from '../model/types';
 
-const UNITS: readonly UnidadDeMasa[] = ['G', 'KG', 'ML', 'L'];
+const UNITS: readonly UnidadDeMasa[] = [
+  UnidadDeMasa.G,
+  UnidadDeMasa.KG,
+  UnidadDeMasa.ML,
+  UnidadDeMasa.L,
+];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+class ValidationError extends Error {}
 
 function isUnit(value: unknown): value is UnidadDeMasa {
   return typeof value === 'string' && UNITS.includes(value as UnidadDeMasa);
@@ -23,32 +38,69 @@ function isStock(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
-/**
- * Fetch all ingredients from Appwrite TablesDB
- */
+function isWastage(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 100;
+}
+
+function roundWastage(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+function parseIngredientId(id: string): string {
+  const cleanId = id?.trim() ?? '';
+  if (!cleanId) {
+    throw new ValidationError('ID de ingrediente no proporcionado.');
+  }
+  if (!UUID_REGEX.test(cleanId)) {
+    throw new ValidationError('ID de ingrediente no válido.');
+  }
+  return cleanId;
+}
+
+function toIngredient(dto: IngredienteResponse): Ingredient {
+  return {
+    $id: dto.id,
+    $createdAt: dto.created_at ?? '',
+    $updatedAt: dto.updated_at ?? '',
+    nombre: dto.nombre,
+    descripcion: dto.descripcion ?? null,
+    stock: Number(dto.stock),
+    unidad_de_masa: dto.unidad_de_masa,
+    precio_compra: dto.precio_compra == null ? null : Number(dto.precio_compra),
+    merma_habitual: dto.merma_habitual == null ? null : Number(dto.merma_habitual),
+  };
+}
+
+function toErrorResponse(error: unknown, fallback: string): { success: false; error: string } {
+  if (error instanceof ValidationError) {
+    return { success: false, error: error.message };
+  }
+  console.error(fallback, error);
+  return { success: false, error: fallback };
+}
+
 export async function getIngredients(): Promise<ActionResponse<Ingredient[]>> {
   try {
-    await requireKitchenAccess()
-    const rows = await ingredientDb.list();
+    await requireKitchenAccess();
+    const response = await ingredientesGetIngredientes();
+    if (response.status !== 200) {
+      return { success: false, error: 'No se pudo cargar el inventario.' };
+    }
 
     return {
       success: true,
-      data: rows,
+      data: response.data.map(toIngredient),
     };
   } catch (error: unknown) {
-    console.error('Error fetching ingredients:', error);
-    return {
-      success: false,
-      error: 'No se pudo cargar el inventario.',
-    };
+    return toErrorResponse(error, 'No se pudo cargar el inventario.');
   }
 }
 
-export async function createIngredient(
+ export async function createIngredient(
   input: CreateIngredientInput,
 ): Promise<ActionResponse<Ingredient>> {
   try {
-    await requireKitchenAccess()
+    await requireKitchenAccess();
     const nombre = input.nombre?.trim();
     if (!nombre) {
       return { success: false, error: 'El nombre del ingrediente es obligatorio.' };
@@ -67,24 +119,33 @@ export async function createIngredient(
       return { success: false, error: 'El precio de compra debe ser un número igual o mayor a 0.' };
     }
 
-    const payload = {
+    if (input.merma_habitual != null && !isWastage(input.merma_habitual)) {
+      return { success: false, error: 'La merma debe estar entre 0 % y 99,99 %.' };
+    }
+
+    const payload: IngredienteCreate = {
       nombre,
       descripcion: input.descripcion?.trim() || null,
       stock,
       unidad_de_masa: input.unidad_de_masa,
       precio_compra: input.precio_compra == null ? null : roundPurchasePrice(input.precio_compra),
+      ...(input.merma_habitual !== undefined
+        ? {
+            merma_habitual:
+              input.merma_habitual === null ? null : roundWastage(input.merma_habitual),
+          }
+        : {}),
     };
 
-    const ingredient = await ingredientDb.create(payload);
+    const response = await ingredientesCreateIngrediente(payload);
+    if (response.status !== 201) {
+      return { success: false, error: 'No se pudo crear el ingrediente.' };
+    }
 
     revalidatePath('/ingredientes');
-    return { success: true, data: ingredient };
+    return { success: true, data: toIngredient(response.data) };
   } catch (error: unknown) {
-    console.error('Error creating ingredient:', error);
-    return {
-      success: false,
-      error: 'No se pudo crear el ingrediente.',
-    };
+    return toErrorResponse(error, 'No se pudo crear el ingrediente.');
   }
 }
 
@@ -93,12 +154,10 @@ export async function updateIngredient(
   input: UpdateIngredientInput,
 ): Promise<ActionResponse<Ingredient>> {
   try {
-    await requireKitchenAccess()
-    if (!id) {
-      return { success: false, error: 'ID de ingrediente no proporcionado.' };
-    }
+    await requireKitchenAccess();
+    const validId = parseIngredientId(id);
 
-    const updateData: UpdateIngredientInput = {};
+    const updateData: IngredienteUpdate = {};
 
     if (input.nombre !== undefined) {
       const nombre = input.nombre.trim();
@@ -138,38 +197,39 @@ export async function updateIngredient(
         input.precio_compra === null ? null : roundPurchasePrice(input.precio_compra);
     }
 
-    const ingredient = await ingredientDb.update(id, updateData);
+    if (input.merma_habitual !== undefined) {
+      if (input.merma_habitual !== null && !isWastage(input.merma_habitual)) {
+        return { success: false, error: 'La merma debe estar entre 0 % y 99,99 %.' };
+      }
+      updateData.merma_habitual =
+        input.merma_habitual === null ? null : roundWastage(input.merma_habitual);
+    }
+
+    const response = await ingredientesUpdateIngrediente(validId, updateData);
+    if (response.status !== 200) {
+      return { success: false, error: 'No se pudo actualizar el ingrediente.' };
+    }
 
     revalidatePath('/ingredientes');
-    return { success: true, data: ingredient };
+    return { success: true, data: toIngredient(response.data) };
   } catch (error: unknown) {
-    console.error('Error updating ingredient:', error);
-    return {
-      success: false,
-      error: 'No se pudo actualizar el ingrediente.',
-    };
+    return toErrorResponse(error, 'No se pudo actualizar el ingrediente.');
   }
 }
 
-/**
- * Delete an ingredient
- */
 export async function deleteIngredient(id: string): Promise<ActionResponse<boolean>> {
   try {
-    await requireKitchenAccess()
-    if (!id) {
-      return { success: false, error: 'ID de ingrediente no proporcionado.' };
-    }
+    await requireKitchenAccess();
+    const validId = parseIngredientId(id);
 
-    await ingredientDb.delete(id);
+    const response = await ingredientesDeleteIngrediente(validId);
+    if (response.status !== 204) {
+      return { success: false, error: 'No se pudo eliminar el ingrediente.' };
+    }
 
     revalidatePath('/ingredientes');
     return { success: true, data: true };
   } catch (error: unknown) {
-    console.error('Error deleting ingredient:', error);
-    return {
-      success: false,
-      error: 'No se pudo eliminar el ingrediente.',
-    };
+    return toErrorResponse(error, 'No se pudo eliminar el ingrediente.');
   }
 }

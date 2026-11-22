@@ -92,4 +92,4 @@ Cuando el usuario te corrija un error, rechace un enfoque o te pida explícitame
 **Formato obligatorio:** una sola línea accionable (`- **No hacer X → Hacer Y.**`), sin explicaciones largas ni contexto histórico. Si ya existe una regla similar, actualízala en lugar de duplicarla.
 
 ### Registro
-- *(Añadir aquí las reglas a medida que surjan correcciones.)*
+- **No usar IDs enteros autoincrementales en nuevos modelos → Usar siempre `UUID` (`sqlalchemy.Uuid` con `uuid4`) como clave primaria.**

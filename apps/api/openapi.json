@@ -5,6 +5,271 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/ingredientes/": {
+      "get": {
+        "tags": [
+          "ingredientes"
+        ],
+        "summary": "Get Ingredientes",
+        "description": "Lista los ingredientes o filtra por nombre parcial o exacto.",
+        "operationId": "ingredientes-get_ingredientes",
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nombre"
+            }
+          },
+          {
+            "name": "exacto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Exacto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IngredienteResponse"
+                  },
+                  "title": "Response Ingredientes-Get Ingredientes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ingredientes"
+        ],
+        "summary": "Create Ingrediente",
+        "description": "Crea un nuevo ingrediente.",
+        "operationId": "ingredientes-create_ingrediente",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngredienteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredienteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ingredientes/{ingrediente_id}": {
+      "get": {
+        "tags": [
+          "ingredientes"
+        ],
+        "summary": "Get Ingrediente By Id",
+        "description": "Obtiene un ingrediente por su UUID.",
+        "operationId": "ingredientes-get_ingrediente_by_id",
+        "parameters": [
+          {
+            "name": "ingrediente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ingrediente Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredienteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ingrediente no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Ingrediente no encontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "ingredientes"
+        ],
+        "summary": "Update Ingrediente",
+        "description": "Actualiza parcialmente un ingrediente.",
+        "operationId": "ingredientes-update_ingrediente",
+        "parameters": [
+          {
+            "name": "ingrediente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ingrediente Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngredienteUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredienteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ingrediente no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Ingrediente no encontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ingredientes"
+        ],
+        "summary": "Delete Ingrediente",
+        "description": "Elimina un ingrediente por su UUID.",
+        "operationId": "ingredientes-delete_ingrediente",
+        "parameters": [
+          {
+            "name": "ingrediente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ingrediente Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Ingrediente no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Ingrediente no encontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/productos/": {
       "get": {
         "tags": [
@@ -344,6 +609,236 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IngredienteCreate": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Stock"
+          },
+          "unidad_de_masa": {
+            "$ref": "#/components/schemas/UnidadDeMasa"
+          },
+          "precio_compra": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Compra"
+          },
+          "merma_habitual": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Habitual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "stock",
+          "unidad_de_masa"
+        ],
+        "title": "IngredienteCreate"
+      },
+      "IngredienteResponse": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "stock": {
+            "type": "string",
+            "title": "Stock"
+          },
+          "unidad_de_masa": {
+            "$ref": "#/components/schemas/UnidadDeMasa"
+          },
+          "precio_compra": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Compra"
+          },
+          "merma_habitual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Habitual"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "stock",
+          "unidad_de_masa",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "IngredienteResponse"
+      },
+      "IngredienteUpdate": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock"
+          },
+          "unidad_de_masa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UnidadDeMasa"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "precio_compra": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Compra"
+          },
+          "merma_habitual": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Habitual"
+          }
+        },
+        "type": "object",
+        "title": "IngredienteUpdate"
+      },
       "ProductoCreate": {
         "properties": {
           "nombre": {
@@ -491,6 +986,16 @@
           "foto"
         ],
         "title": "ProductoUpdate"
+      },
+      "UnidadDeMasa": {
+        "type": "string",
+        "enum": [
+          "G",
+          "KG",
+          "ML",
+          "L"
+        ],
+        "title": "UnidadDeMasa"
       },
       "ValidationError": {
         "properties": {

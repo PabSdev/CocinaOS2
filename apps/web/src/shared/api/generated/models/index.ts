@@ -7,9 +7,14 @@
 
 export * from './categoria';
 export * from './hTTPValidationError';
+export * from './ingredienteCreate';
+export * from './ingredienteResponse';
+export * from './ingredientesGetIngredientesParams';
+export * from './ingredienteUpdate';
 export * from './productoCreate';
 export * from './productoResponse';
 export * from './productosGetProductosParams';
 export * from './productoUpdate';
+export * from './unidadDeMasa';
 export * from './validationError';
 export * from './validationErrorCtx';

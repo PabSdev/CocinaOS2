@@ -4,7 +4,7 @@ import type { Models } from 'node-appwrite'
 import type { RecipeSheet, RecipeSheetDish, SaveRecipeSheetInput } from '../model/recipe-sheet'
 import type { RecipeItem } from '../model/types'
 import { getCompatibleUnits, parseDishPrice, round2, round4 } from '../model/escandallo-operations'
-import { DATABASE_ID, ID, Query, TABLE_PLATOS_ID, TABLE_RECETAS_ID, tablesDB, ingredientDb } from '@/shared/api'
+import { DATABASE_ID, ID, Query, TABLE_PLATOS_ID, TABLE_RECETAS_ID, tablesDB, ingredientesGetIngredientes } from '@/shared/api'
 
 type DishRow = Models.Row & Omit<RecipeSheetDish, 'precio'> & { precio?: number | null; receta_id?: string | null }
 type RecipeRow = Models.Row & RecipeItem
@@ -67,20 +67,23 @@ export const recipeSheetDb = {
       return { error: 'Introduce un PVP válido, igual o mayor que cero.' }
     }
 
-    const [current, ingredients] = await Promise.all([loadRows(input.dishId), ingredientDb.list()])
+    const [current, ingredientsResponse] = await Promise.all([loadRows(input.dishId), ingredientesGetIngredientes()])
+    if (ingredientsResponse.status !== 200) {
+      throw new Error('No se pudieron cargar los ingredientes.')
+    }
     if (current.version !== input.version) return { error: conflict }
 
     const currentById = new Map(current.lines.map((row) => [row.$id, row]))
-    const ingredientsById = new Map(ingredients.map((row) => [row.$id, row]))
+    const ingredientsById = new Map(ingredientsResponse.data.map((row) => [row.id, row]))
     const retained = new Set<string>()
     const ingredientIds = new Set<string>()
 
     for (const line of input.lines) {
       const ingredient = ingredientsById.get(line?.ingrediente_id)
-      if (!ingredient || ingredientIds.has(ingredient.$id)) {
+      if (!ingredient || ingredientIds.has(ingredient.id)) {
         return { error: 'Selecciona un ingrediente existente y distinto en cada línea.' }
       }
-      ingredientIds.add(ingredient.$id)
+      ingredientIds.add(ingredient.id)
       if (line.id !== undefined) {
         if (!currentById.has(line.id) || retained.has(line.id)) return { error: conflict }
         retained.add(line.id)

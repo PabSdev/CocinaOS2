@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
+from modules.ingredientes.router import router as ingredientes_router
 from modules.productos.router import router as productos_router
 
 _ = load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -20,4 +21,5 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
+app.include_router(ingredientes_router)
 app.include_router(productos_router)

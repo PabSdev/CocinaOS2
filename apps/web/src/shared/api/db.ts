@@ -39,7 +39,6 @@ export function getAuthCookieName(): string {
 }
 
 export const DATABASE_ID = databaseId;
-export const TABLE_INGREDIENTES_ID = process.env.APPWRITE_TABLE_INGREDIENTES_ID || '';
 export const TABLE_PLATOS_ID = process.env.APPWRITE_TABLE_PLATOS_ID || '';
 export const TABLE_RECETAS_ID = process.env.APPWRITE_TABLE_RECETAS_ID || '';
 export const BUCKET_FOTOS_ID = process.env.APPWRITE_BUCKET_FOTOS_ID || '';

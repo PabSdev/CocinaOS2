@@ -10,7 +10,13 @@ vi.mock('@/shared/api', async () => {
   return {
     tablesDB: db, DATABASE_ID: 'db', TABLE_PLATOS_ID: 'dishes', TABLE_RECETAS_ID: 'recipes', Query,
     ID: { unique: () => 'new-line' },
-    ingredientDb: { list: async () => [{ $id: 'flour', unidad_de_masa: 'KG' }, { $id: 'oil', unidad_de_masa: 'L' }] },
+    ingredientesGetIngredientes: async () => ({
+      status: 200,
+      data: [
+        { id: 'flour', unidad_de_masa: 'KG' },
+        { id: 'oil', unidad_de_masa: 'L' },
+      ],
+    }),
   }
 })
 

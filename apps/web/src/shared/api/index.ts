@@ -1,5 +1,4 @@
 export * from './db'
 export * from './access'
-export { ingredientDb } from './ingredients'
 export * from './generated'
 export * from './generated/models'
