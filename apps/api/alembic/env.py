@@ -5,7 +5,9 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 import modules.ingredientes.ingrediente_model  # pyright: ignore[reportUnusedImport]
-import modules.productos.producto_model  # noqa: F401  # pyright: ignore[reportUnusedImport]
+import modules.platos.plato_model  # pyright: ignore[reportUnusedImport]
+import modules.productos.producto_model  # pyright: ignore[reportUnusedImport]
+import modules.recetas.receta_model  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from alembic import context
 from shared.db import Base
 

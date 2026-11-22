@@ -257,6 +257,274 @@
               }
             }
           },
+          "409": {
+            "description": "No se puede eliminar el ingrediente porque está asociado a una o más recetas."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platos/": {
+      "get": {
+        "tags": [
+          "platos"
+        ],
+        "summary": "Get Platos",
+        "description": "Lista los platos o filtra por nombre parcial o exacto.",
+        "operationId": "platos-get_platos",
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nombre"
+            }
+          },
+          {
+            "name": "exacto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Exacto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlatoResponse"
+                  },
+                  "title": "Response Platos-Get Platos"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "platos"
+        ],
+        "summary": "Create Plato",
+        "description": "Crea un nuevo plato.",
+        "operationId": "platos-create_plato",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platos/{plato_id}": {
+      "get": {
+        "tags": [
+          "platos"
+        ],
+        "summary": "Get Plato By Id",
+        "description": "Obtiene un plato por su UUID.",
+        "operationId": "platos-get_plato_by_id",
+        "parameters": [
+          {
+            "name": "plato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plato Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plato no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Plato no encontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "platos"
+        ],
+        "summary": "Update Plato",
+        "description": "Actualiza parcialmente un plato.",
+        "operationId": "platos-update_plato",
+        "parameters": [
+          {
+            "name": "plato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plato Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plato no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Plato no encontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "platos"
+        ],
+        "summary": "Delete Plato",
+        "description": "Elimina un plato por su UUID.",
+        "operationId": "platos-delete_plato",
+        "parameters": [
+          {
+            "name": "plato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plato Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Plato no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Plato no encontrado"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -580,6 +848,374 @@
           }
         }
       }
+    },
+    "/recetas/": {
+      "get": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Get Recetas",
+        "description": "Lista las líneas de receta o filtra por plato o ingrediente.",
+        "operationId": "recetas-get_recetas",
+        "parameters": [
+          {
+            "name": "plato_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plato Id"
+            }
+          },
+          {
+            "name": "ingrediente_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ingrediente Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecetaResponse"
+                  },
+                  "title": "Response Recetas-Get Recetas"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Create Receta",
+        "description": "Crea o actualiza (upsert) una línea de receta para un plato e ingrediente.",
+        "operationId": "recetas-create_receta",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecetaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plato o ingrediente no encontrado"
+          },
+          "409": {
+            "description": "Conflicto de concurrencia o duplicidad"
+          },
+          "422": {
+            "description": "Error de validación de negocio"
+          }
+        }
+      }
+    },
+    "/recetas/plato/{plato_id}/escandallo": {
+      "get": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Get Escandallo",
+        "description": "Obtiene la ficha de escandallo completa de un plato junto a su versión.",
+        "operationId": "recetas-get_escandallo",
+        "parameters": [
+          {
+            "name": "plato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plato Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaEscandalloResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Línea de receta no encontrada",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Línea de receta no encontrada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recetas/plato/{plato_id}": {
+      "put": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Sync Plato Receta",
+        "description": "Sincroniza atómicamente las líneas de receta y el PVP opcional de un plato.",
+        "operationId": "recetas-sync_plato_receta",
+        "parameters": [
+          {
+            "name": "plato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plato Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecetaPlatoSyncRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaEscandalloResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plato o ingrediente no encontrado"
+          },
+          "409": {
+            "description": "Conflicto de concurrencia o duplicidad"
+          },
+          "422": {
+            "description": "Error de validación de negocio"
+          }
+        }
+      }
+    },
+    "/recetas/{receta_id}": {
+      "get": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Get Receta By Id",
+        "description": "Obtiene una línea de receta por su UUID.",
+        "operationId": "recetas-get_receta_by_id",
+        "parameters": [
+          {
+            "name": "receta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Receta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Línea de receta no encontrada",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Línea de receta no encontrada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Update Receta",
+        "description": "Actualiza parcialmente una línea de receta.",
+        "operationId": "recetas-update_receta",
+        "parameters": [
+          {
+            "name": "receta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Receta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecetaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecetaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plato o ingrediente no encontrado"
+          },
+          "409": {
+            "description": "Conflicto de concurrencia o duplicidad"
+          },
+          "422": {
+            "description": "Error de validación de negocio"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "recetas"
+        ],
+        "summary": "Delete Receta",
+        "description": "Elimina una línea de receta por su UUID.",
+        "operationId": "recetas-delete_receta",
+        "parameters": [
+          {
+            "name": "receta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Receta Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Línea de receta no encontrada",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "Línea de receta no encontrada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -839,6 +1475,159 @@
         "type": "object",
         "title": "IngredienteUpdate"
       },
+      "PlatoCreate": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Precio",
+            "default": "0"
+          },
+          "stock": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Stock",
+            "default": 0
+          },
+          "foto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "PlatoCreate"
+      },
+      "PlatoResponse": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio",
+            "default": "0"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock",
+            "default": 0
+          },
+          "foto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foto"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PlatoResponse"
+      },
+      "PlatoUpdate": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio"
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock"
+          },
+          "foto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foto"
+          }
+        },
+        "type": "object",
+        "title": "PlatoUpdate"
+      },
       "ProductoCreate": {
         "properties": {
           "nombre": {
@@ -986,6 +1775,423 @@
           "foto"
         ],
         "title": "ProductoUpdate"
+      },
+      "RecetaCreate": {
+        "properties": {
+          "plato_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plato Id"
+          },
+          "ingrediente_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Ingrediente Id"
+          },
+          "cantidad": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cantidad"
+          },
+          "unidad": {
+            "$ref": "#/components/schemas/UnidadDeMasa"
+          },
+          "merma_ingrediente_receta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Ingrediente Receta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plato_id",
+          "ingrediente_id",
+          "cantidad",
+          "unidad"
+        ],
+        "title": "RecetaCreate"
+      },
+      "RecetaEscandalloResponse": {
+        "properties": {
+          "plato": {
+            "$ref": "#/components/schemas/PlatoResponse"
+          },
+          "lineas": {
+            "items": {
+              "$ref": "#/components/schemas/RecetaResponse"
+            },
+            "type": "array",
+            "title": "Lineas"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plato",
+          "lineas",
+          "version"
+        ],
+        "title": "RecetaEscandalloResponse"
+      },
+      "RecetaIngredienteResumenResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "stock": {
+            "type": "string",
+            "title": "Stock"
+          },
+          "unidad_de_masa": {
+            "$ref": "#/components/schemas/UnidadDeMasa"
+          },
+          "precio_compra": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Compra"
+          },
+          "merma_habitual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Habitual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "stock",
+          "unidad_de_masa"
+        ],
+        "title": "RecetaIngredienteResumenResponse"
+      },
+      "RecetaLineaSync": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "ingrediente_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Ingrediente Id"
+          },
+          "cantidad": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cantidad"
+          },
+          "unidad": {
+            "$ref": "#/components/schemas/UnidadDeMasa"
+          },
+          "merma_ingrediente_receta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Ingrediente Receta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ingrediente_id",
+          "cantidad",
+          "unidad"
+        ],
+        "title": "RecetaLineaSync"
+      },
+      "RecetaPlatoResumenResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          },
+          "foto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foto"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "precio",
+          "stock"
+        ],
+        "title": "RecetaPlatoResumenResponse"
+      },
+      "RecetaPlatoSyncRequest": {
+        "properties": {
+          "lineas": {
+            "items": {
+              "$ref": "#/components/schemas/RecetaLineaSync"
+            },
+            "type": "array",
+            "title": "Lineas"
+          },
+          "precio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lineas"
+        ],
+        "title": "RecetaPlatoSyncRequest"
+      },
+      "RecetaResponse": {
+        "properties": {
+          "plato_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Plato Id"
+          },
+          "ingrediente_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Ingrediente Id"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "unidad": {
+            "$ref": "#/components/schemas/UnidadDeMasa"
+          },
+          "merma_ingrediente_receta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Ingrediente Receta"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "plato": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecetaPlatoResumenResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ingrediente": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecetaIngredienteResumenResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "plato_id",
+          "ingrediente_id",
+          "cantidad",
+          "unidad",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RecetaResponse"
+      },
+      "RecetaUpdate": {
+        "properties": {
+          "ingrediente_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingrediente Id"
+          },
+          "cantidad": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cantidad"
+          },
+          "unidad": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UnidadDeMasa"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merma_ingrediente_receta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merma Ingrediente Receta"
+          }
+        },
+        "type": "object",
+        "title": "RecetaUpdate"
       },
       "UnidadDeMasa": {
         "type": "string",

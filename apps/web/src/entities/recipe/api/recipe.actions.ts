@@ -1,505 +1,438 @@
-'use server'
+'use server';
 
-import { requireKitchenAccess } from '@/shared/api'
-
-import { revalidatePath } from 'next/cache'
-import type { Models } from 'node-appwrite'
 import {
-  tablesDB,
-  DATABASE_ID,
-  TABLE_RECETAS_ID,
-  TABLE_PLATOS_ID,
-  ID,
-  Query,
-} from '@/shared/api'
+  recetasCreateReceta,
+  recetasDeleteReceta,
+  recetasGetEscandallo,
+  recetasGetRecetaById,
+  recetasGetRecetas,
+  recetasSyncPlatoReceta,
+  recetasUpdateReceta,
+  requireKitchenAccess,
+  UnidadDeMasa,
+  type RecetaCreate,
+  type RecetaLineaSync,
+  type RecetaResponse,
+  type RecetaUpdate,
+} from '@/shared/api';
+import { revalidatePath } from 'next/cache';
 import {
   calculateGrossQuantity,
   normalizeRecipeQuantity,
   resolveEffectiveWastage,
   round2,
   round4,
-} from '../model/escandallo-operations'
+} from '../model/escandallo-operations';
 import type {
-  RecipeItem,
-  RecipeUnit,
+  ActionResponse,
   CreateRecipeItemInput,
-  UpdateRecipeItemInput,
   DishRecipeIngredientInput,
   DishStockFeasibility,
-  ActionResponse,
-} from '../model/types'
+  RecipeItem,
+  RecipeUnit,
+  UpdateRecipeItemInput,
+} from '../model/types';
 
-type RecipeRow = Models.Row & {
-  plato_id: string | (Models.Row & { nombre?: string; precio?: string; foto?: string | null; stock?: number })
-  ingrediente_id:
-    | string
-    | (Models.Row & {
-        nombre?: string
-        descripcion?: string | null
-        stock?: number
-        unidad_de_masa?: string
-        precio_compra?: number | null
-        merma_habitual?: number | null
-      })
-  cantidad: number
-  unidad: RecipeUnit
-  merma_ingrediente_receta?: number | null
-}
+const VALID_UNITS: readonly RecipeUnit[] = [
+  UnidadDeMasa.G,
+  UnidadDeMasa.KG,
+  UnidadDeMasa.ML,
+  UnidadDeMasa.L,
+];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const VALID_UNITS: readonly RecipeUnit[] = ['G', 'KG', 'ML', 'L']
+class ValidationError extends Error {}
 
 function isValidUnit(value: unknown): value is RecipeUnit {
-  return typeof value === 'string' && VALID_UNITS.includes(value as RecipeUnit)
+  return typeof value === 'string' && VALID_UNITS.includes(value as RecipeUnit);
 }
 
 function isValidWastage(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 100
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 100;
 }
 
-function parseRecipeRow(row: RecipeRow): RecipeItem {
-  const platoId =
-    typeof row.plato_id === 'string' ? row.plato_id : row.plato_id?.$id || ''
-
-  const ingredienteId =
-    typeof row.ingrediente_id === 'string'
-      ? row.ingrediente_id
-      : row.ingrediente_id?.$id || ''
-
-  const plato =
-    typeof row.plato_id === 'object' && row.plato_id !== null
-      ? {
-          $id: row.plato_id.$id,
-          nombre: String(row.plato_id.nombre || ''),
-          precio: row.plato_id.precio?.trim() || null,
-          foto: row.plato_id.foto ? String(row.plato_id.foto) : null,
-          stock: Number(row.plato_id.stock ?? 0),
-        }
-      : undefined
-
-  const ingrediente =
-    typeof row.ingrediente_id === 'object' && row.ingrediente_id !== null
-      ? {
-          $id: row.ingrediente_id.$id,
-          nombre: String(row.ingrediente_id.nombre || ''),
-          descripcion: row.ingrediente_id.descripcion
-            ? String(row.ingrediente_id.descripcion)
-            : null,
-          stock: Number(row.ingrediente_id.stock ?? 0),
-          unidad_de_masa: (String(row.ingrediente_id.unidad_de_masa || 'KG').toUpperCase() as RecipeUnit),
-          precio_compra:
-            row.ingrediente_id.precio_compra == null
-              ? null
-              : Number(row.ingrediente_id.precio_compra),
-          merma_habitual:
-            row.ingrediente_id.merma_habitual == null
-              ? null
-              : Number(row.ingrediente_id.merma_habitual),
-        }
-      : undefined
-
-  return {
-    $id: row.$id,
-    $createdAt: row.$createdAt,
-    $updatedAt: row.$updatedAt,
-    plato_id: platoId,
-    ingrediente_id: ingredienteId,
-    cantidad: Number(row.cantidad),
-    unidad: row.unidad,
-    merma_ingrediente_receta:
-      row.merma_ingrediente_receta == null ? null : Number(row.merma_ingrediente_receta),
-    plato,
-    ingrediente,
+function parseUuid(value: string, emptyMessage: string, invalidMessage: string): string {
+  const clean = value?.trim() ?? '';
+  if (!clean) {
+    throw new ValidationError(emptyMessage);
   }
+  if (!UUID_REGEX.test(clean)) {
+    throw new ValidationError(invalidMessage);
+  }
+  return clean;
 }
 
-export async function getRecipeItems(queries: string[] = []): Promise<ActionResponse<RecipeItem[]>> {
+function toRecipeItem(dto: RecetaResponse): RecipeItem {
+  return {
+    $id: dto.id,
+    $createdAt: dto.created_at ?? '',
+    $updatedAt: dto.updated_at ?? '',
+    plato_id: dto.plato_id,
+    ingrediente_id: dto.ingrediente_id,
+    cantidad: Number(dto.cantidad),
+    unidad: dto.unidad,
+    merma_ingrediente_receta:
+      dto.merma_ingrediente_receta == null ? null : Number(dto.merma_ingrediente_receta),
+    plato: dto.plato
+      ? {
+          $id: dto.plato.id,
+          nombre: dto.plato.nombre,
+          precio: dto.plato.precio == null ? null : String(dto.plato.precio),
+          foto: dto.plato.foto ?? null,
+          stock: Number(dto.plato.stock ?? 0),
+        }
+      : undefined,
+    ingrediente: dto.ingrediente
+      ? {
+          $id: dto.ingrediente.id,
+          nombre: dto.ingrediente.nombre,
+          descripcion: dto.ingrediente.descripcion ?? null,
+          stock: Number(dto.ingrediente.stock ?? 0),
+          unidad_de_masa: dto.ingrediente.unidad_de_masa,
+          precio_compra:
+            dto.ingrediente.precio_compra == null ? null : Number(dto.ingrediente.precio_compra),
+          merma_habitual:
+            dto.ingrediente.merma_habitual == null ? null : Number(dto.ingrediente.merma_habitual),
+        }
+      : undefined,
+  };
+}
+
+function toErrorResponse(error: unknown, fallback: string): { success: false; error: string } {
+  if (error instanceof ValidationError) {
+    return { success: false, error: error.message };
+  }
+  console.error(fallback, error);
+  return { success: false, error: fallback };
+}
+
+export async function getRecipeItems(): Promise<ActionResponse<RecipeItem[]>> {
   try {
-    await requireKitchenAccess()
-    const defaultQueries = [
-      Query.select(['*', 'ingrediente_id.*', 'plato_id.*']),
-      Query.limit(200),
-      Query.orderDesc('$createdAt'),
-    ]
+    await requireKitchenAccess();
+    const response = await recetasGetRecetas();
+    if (response.status !== 200) {
+      return { success: false, error: 'No se pudieron cargar las recetas.' };
+    }
 
-    const response = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: queries.length > 0 ? queries : defaultQueries,
-    })
-
-    const items = response.rows.map(parseRecipeRow)
-    return { success: true, data: items }
+    return { success: true, data: response.data.map(toRecipeItem) };
   } catch (error: unknown) {
-    console.error('Error fetching recipe items:', error)
-    return { success: false, error: 'No se pudieron cargar las recetas.' }
+    return toErrorResponse(error, 'No se pudieron cargar las recetas.');
   }
 }
 
 export async function getRecipeByDish(dishId: string): Promise<ActionResponse<RecipeItem[]>> {
   try {
-    await requireKitchenAccess()
-    if (!dishId) {
-      return { success: false, error: 'ID de plato no proporcionado.' }
+    await requireKitchenAccess();
+    const validDishId = parseUuid(
+      dishId,
+      'ID de plato no proporcionado.',
+      'ID de plato no válido.',
+    );
+
+    const response = await recetasGetRecetas({ plato_id: validDishId });
+    if (response.status !== 200) {
+      return { success: false, error: 'No se pudo cargar la receta del plato.' };
     }
 
-    const response = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: [
-        Query.equal('plato_id', dishId),
-        Query.select(['*', 'ingrediente_id.*']),
-        Query.limit(100),
-      ],
-    })
-
-    const items = response.rows.map(parseRecipeRow)
-    return { success: true, data: items }
+    return { success: true, data: response.data.map(toRecipeItem) };
   } catch (error: unknown) {
-    console.error(`Error fetching recipe for dish ${dishId}:`, error)
-    return { success: false, error: 'No se pudo cargar la receta del plato.' }
+    return toErrorResponse(error, 'No se pudo cargar la receta del plato.');
   }
 }
 
-export async function getDishesByIngredient(ingredientId: string): Promise<ActionResponse<RecipeItem[]>> {
+export async function getDishesByIngredient(
+  ingredientId: string,
+): Promise<ActionResponse<RecipeItem[]>> {
   try {
-    await requireKitchenAccess()
-    if (!ingredientId) {
-      return { success: false, error: 'ID de ingrediente no proporcionado.' }
+    await requireKitchenAccess();
+    const validIngredientId = parseUuid(
+      ingredientId,
+      'ID de ingrediente no proporcionado.',
+      'ID de ingrediente no válido.',
+    );
+
+    const response = await recetasGetRecetas({ ingrediente_id: validIngredientId });
+    if (response.status !== 200) {
+      return {
+        success: false,
+        error: 'No se pudieron consultar los platos asociados al ingrediente.',
+      };
     }
 
-    const response = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: [
-        Query.equal('ingrediente_id', ingredientId),
-        Query.select(['*', 'plato_id.*']),
-        Query.limit(100),
-      ],
-    })
-
-    const items = response.rows.map(parseRecipeRow)
-    return { success: true, data: items }
+    return { success: true, data: response.data.map(toRecipeItem) };
   } catch (error: unknown) {
-    console.error(`Error fetching dishes using ingredient ${ingredientId}:`, error)
-    return { success: false, error: 'No se pudieron consultar los platos asociados al ingrediente.' }
+    return toErrorResponse(
+      error,
+      'No se pudieron consultar los platos asociados al ingrediente.',
+    );
   }
 }
 
 export async function getRecipeItemById(id: string): Promise<ActionResponse<RecipeItem>> {
   try {
-    await requireKitchenAccess()
-    if (!id) {
-      return { success: false, error: 'ID de elemento de receta no proporcionado.' }
+    await requireKitchenAccess();
+    const validId = parseUuid(
+      id,
+      'ID de elemento de receta no proporcionado.',
+      'ID de elemento de receta no válido.',
+    );
+
+    const response = await recetasGetRecetaById(validId);
+    if (response.status !== 200) {
+      return { success: false, error: 'No se encontró el elemento de receta.' };
     }
 
-    const row = await tablesDB.getRow<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      rowId: id,
-      queries: [Query.select(['*', 'ingrediente_id.*', 'plato_id.*'])],
-    })
-
-    return { success: true, data: parseRecipeRow(row) }
+    return { success: true, data: toRecipeItem(response.data) };
   } catch (error: unknown) {
-    console.error(`Error fetching recipe item ${id}:`, error)
-    return { success: false, error: 'No se encontró el elemento de receta.' }
+    return toErrorResponse(error, 'No se encontró el elemento de receta.');
   }
 }
 
-export async function createRecipeItem(input: CreateRecipeItemInput): Promise<ActionResponse<RecipeItem>> {
+export async function createRecipeItem(
+  input: CreateRecipeItemInput,
+): Promise<ActionResponse<RecipeItem>> {
   try {
-    await requireKitchenAccess()
-    const platoId = input.plato_id?.trim()
-    const ingredienteId = input.ingrediente_id?.trim()
+    await requireKitchenAccess();
+    const platoId = parseUuid(
+      input.plato_id,
+      'El ID del plato es obligatorio.',
+      'ID de plato no válido.',
+    );
+    const ingredienteId = parseUuid(
+      input.ingrediente_id,
+      'El ID del ingrediente es obligatorio.',
+      'ID de ingrediente no válido.',
+    );
 
-    if (!platoId) {
-      return { success: false, error: 'El ID del plato es obligatorio.' }
-    }
-
-    if (!ingredienteId) {
-      return { success: false, error: 'El ID del ingrediente es obligatorio.' }
-    }
-
-    const cantidad = Number(input.cantidad)
+    const cantidad = Number(input.cantidad);
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      return { success: false, error: 'La cantidad debe ser un número mayor a 0.' }
+      return { success: false, error: 'La cantidad debe ser un número mayor a 0.' };
     }
 
     if (!isValidUnit(input.unidad)) {
-      return { success: false, error: 'La unidad de medida seleccionada no es válida (G, KG, ML, L).' }
+      return {
+        success: false,
+        error: 'La unidad de medida seleccionada no es válida (G, KG, ML, L).',
+      };
     }
 
     if (input.merma_ingrediente_receta != null && !isValidWastage(input.merma_ingrediente_receta)) {
-      return { success: false, error: 'La merma debe estar entre 0 % y 99,99 %.' }
+      return { success: false, error: 'La merma debe estar entre 0 % y 99,99 %.' };
     }
 
-    const merma =
-      input.merma_ingrediente_receta == null ? null : round2(input.merma_ingrediente_receta)
+    const payload: RecetaCreate = {
+      plato_id: platoId,
+      ingrediente_id: ingredienteId,
+      cantidad: round4(cantidad),
+      unidad: input.unidad,
+      merma_ingrediente_receta:
+        input.merma_ingrediente_receta == null ? null : round2(input.merma_ingrediente_receta),
+    };
 
-    const existing = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: [
-        Query.equal('plato_id', platoId),
-        Query.equal('ingrediente_id', ingredienteId),
-        Query.limit(1),
-      ],
-    })
-
-    if (existing.total > 0 && existing.rows[0]) {
-      const existingRow = existing.rows[0]
-      const updated = await tablesDB.updateRow<RecipeRow>({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_RECETAS_ID,
-        rowId: existingRow.$id,
-        data: {
-          cantidad: round4(cantidad),
-          unidad: input.unidad,
-          merma_ingrediente_receta: merma,
-        },
-      })
-
-      revalidatePath('/platos')
-      return { success: true, data: parseRecipeRow(updated) }
+    const response = await recetasCreateReceta(payload);
+    if (response.status !== 201) {
+      return { success: false, error: 'No se pudo añadir el ingrediente a la receta.' };
     }
 
-    const created = await tablesDB.createRow<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      rowId: ID.unique(),
-      data: {
-        plato_id: platoId,
-        ingrediente_id: ingredienteId,
-        cantidad: round4(cantidad),
-        unidad: input.unidad,
-        merma_ingrediente_receta: merma,
-      },
-    })
-
-    revalidatePath('/platos')
-    return { success: true, data: parseRecipeRow(created) }
+    revalidatePath('/platos');
+    revalidatePath('/escandallos');
+    return { success: true, data: toRecipeItem(response.data) };
   } catch (error: unknown) {
-    console.error('Error creating recipe item:', error)
-    return { success: false, error: 'No se pudo añadir el ingrediente a la receta.' }
+    return toErrorResponse(error, 'No se pudo añadir el ingrediente a la receta.');
   }
 }
 
 export async function updateRecipeItem(
   id: string,
-  input: UpdateRecipeItemInput
+  input: UpdateRecipeItemInput,
 ): Promise<ActionResponse<RecipeItem>> {
   try {
-    await requireKitchenAccess()
-    if (!id) {
-      return { success: false, error: 'ID de elemento de receta no proporcionado.' }
-    }
+    await requireKitchenAccess();
+    const validId = parseUuid(
+      id,
+      'ID de elemento de receta no proporcionado.',
+      'ID de elemento de receta no válido.',
+    );
 
-    const updateData: Partial<
-      Pick<RecipeRow, 'cantidad' | 'unidad' | 'ingrediente_id' | 'merma_ingrediente_receta'>
-    > = {}
+    const updateData: RecetaUpdate = {};
 
     if (input.cantidad !== undefined) {
-      const cantidad = Number(input.cantidad)
+      const cantidad = Number(input.cantidad);
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
-        return { success: false, error: 'La cantidad debe ser un número mayor a 0.' }
+        return { success: false, error: 'La cantidad debe ser un número mayor a 0.' };
       }
-      updateData.cantidad = round4(cantidad)
+      updateData.cantidad = round4(cantidad);
     }
 
     if (input.unidad !== undefined) {
       if (!isValidUnit(input.unidad)) {
-        return { success: false, error: 'Unidad de medida no válida.' }
+        return { success: false, error: 'Unidad de medida no válida.' };
       }
-      updateData.unidad = input.unidad
+      updateData.unidad = input.unidad;
     }
 
     if (input.ingrediente_id !== undefined) {
-      const ingId = input.ingrediente_id.trim()
-      if (!ingId) {
-        return { success: false, error: 'ID de ingrediente inválido.' }
-      }
-      updateData.ingrediente_id = ingId
+      updateData.ingrediente_id = parseUuid(
+        input.ingrediente_id,
+        'ID de ingrediente inválido.',
+        'ID de ingrediente inválido.',
+      );
     }
 
     if (input.merma_ingrediente_receta !== undefined) {
-      if (input.merma_ingrediente_receta !== null && !isValidWastage(input.merma_ingrediente_receta)) {
-        return { success: false, error: 'La merma debe estar entre 0 % y 99,99 %.' }
+      if (
+        input.merma_ingrediente_receta !== null &&
+        !isValidWastage(input.merma_ingrediente_receta)
+      ) {
+        return { success: false, error: 'La merma debe estar entre 0 % y 99,99 %.' };
       }
       updateData.merma_ingrediente_receta =
-        input.merma_ingrediente_receta === null ? null : round2(input.merma_ingrediente_receta)
+        input.merma_ingrediente_receta === null ? null : round2(input.merma_ingrediente_receta);
     }
 
-    const updated = await tablesDB.updateRow<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      rowId: id,
-      data: updateData,
-    })
+    const response = await recetasUpdateReceta(validId, updateData);
+    if (response.status !== 200) {
+      return { success: false, error: 'No se pudo actualizar el elemento de la receta.' };
+    }
 
-    revalidatePath('/platos')
-    return { success: true, data: parseRecipeRow(updated) }
+    revalidatePath('/platos');
+    revalidatePath('/escandallos');
+    return { success: true, data: toRecipeItem(response.data) };
   } catch (error: unknown) {
-    console.error(`Error updating recipe item ${id}:`, error)
-    return { success: false, error: 'No se pudo actualizar el elemento de la receta.' }
+    return toErrorResponse(error, 'No se pudo actualizar el elemento de la receta.');
   }
 }
 
 export async function deleteRecipeItem(id: string): Promise<ActionResponse<boolean>> {
   try {
-    await requireKitchenAccess()
-    if (!id) {
-      return { success: false, error: 'ID de elemento de receta no proporcionado.' }
+    await requireKitchenAccess();
+    const validId = parseUuid(
+      id,
+      'ID de elemento de receta no proporcionado.',
+      'ID de elemento de receta no válido.',
+    );
+
+    const response = await recetasDeleteReceta(validId);
+    if (response.status !== 204) {
+      return { success: false, error: 'No se pudo eliminar el ingrediente de la receta.' };
     }
 
-    await tablesDB.deleteRow({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      rowId: id,
-    })
-
-    revalidatePath('/platos')
-    return { success: true, data: true }
+    revalidatePath('/platos');
+    revalidatePath('/escandallos');
+    return { success: true, data: true };
   } catch (error: unknown) {
-    console.error(`Error deleting recipe item ${id}:`, error)
-    return { success: false, error: 'No se pudo eliminar el ingrediente de la receta.' }
+    return toErrorResponse(error, 'No se pudo eliminar el ingrediente de la receta.');
   }
 }
 
 export async function setDishRecipe(
   dishId: string,
-  ingredients: DishRecipeIngredientInput[]
+  ingredients: DishRecipeIngredientInput[],
 ): Promise<ActionResponse<RecipeItem[]>> {
   try {
-    await requireKitchenAccess()
-    if (!dishId) {
-      return { success: false, error: 'ID de plato no proporcionado.' }
-    }
+    await requireKitchenAccess();
+    const validDishId = parseUuid(
+      dishId,
+      'ID de plato no proporcionado.',
+      'ID de plato no válido.',
+    );
 
+    const lineas: RecetaLineaSync[] = [];
     for (const item of ingredients) {
-      const cantidad = Number(item.cantidad)
+      const cantidad = Number(item.cantidad);
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
-        return { success: false, error: 'Todas las cantidades útiles deben ser mayores a 0.' }
+        return { success: false, error: 'Todas las cantidades útiles deben ser mayores a 0.' };
       }
       if (!isValidUnit(item.unidad)) {
-        return { success: false, error: 'Unidad de medida no válida en la receta.' }
+        return { success: false, error: 'Unidad de medida no válida en la receta.' };
       }
       if (item.merma_ingrediente_receta != null && !isValidWastage(item.merma_ingrediente_receta)) {
-        return { success: false, error: 'El porcentaje de merma debe estar entre 0 % y 99,99 %.' }
+        return { success: false, error: 'El porcentaje de merma debe estar entre 0 % y 99,99 %.' };
       }
+      lineas.push({
+        ingrediente_id: parseUuid(
+          item.ingrediente_id,
+          'ID de ingrediente inválido.',
+          'ID de ingrediente inválido.',
+        ),
+        cantidad: round4(cantidad),
+        unidad: item.unidad,
+        merma_ingrediente_receta:
+          item.merma_ingrediente_receta == null ? null : round2(item.merma_ingrediente_receta),
+      });
     }
 
-    const current = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: [Query.equal('plato_id', dishId), Query.limit(100)],
-    })
-
-    await Promise.all(
-      current.rows.map((row) =>
-        tablesDB.deleteRow({
-          databaseId: DATABASE_ID,
-          tableId: TABLE_RECETAS_ID,
-          rowId: row.$id,
-        })
-      )
-    )
-
-    for (const item of ingredients) {
-      await tablesDB.createRow<RecipeRow>({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_RECETAS_ID,
-        rowId: ID.unique(),
-        data: {
-          plato_id: dishId,
-          ingrediente_id: item.ingrediente_id,
-          cantidad: round4(Number(item.cantidad)),
-          unidad: item.unidad,
-          merma_ingrediente_receta:
-            item.merma_ingrediente_receta == null ? null : round2(item.merma_ingrediente_receta),
-        },
-      })
+    const response = await recetasSyncPlatoReceta(validDishId, { lineas });
+    if (response.status !== 200) {
+      return { success: false, error: 'No se pudo sincronizar la receta completa del plato.' };
     }
 
-    // Fetch created items with expanded ingredient_id.* so client immediately receives prices/wastage
-    const refreshed = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: [
-        Query.equal('plato_id', dishId),
-        Query.select(['*', 'ingrediente_id.*']),
-        Query.limit(100),
-      ],
-    })
-
-    revalidatePath('/platos')
-    return { success: true, data: refreshed.rows.map(parseRecipeRow) }
+    revalidatePath('/platos');
+    revalidatePath('/escandallos');
+    return { success: true, data: response.data.lineas.map(toRecipeItem) };
   } catch (error: unknown) {
-    console.error(`Error syncing recipe for dish ${dishId}:`, error)
-    return { success: false, error: 'No se pudo sincronizar la receta completa del plato.' }
+    return toErrorResponse(error, 'No se pudo sincronizar la receta completa del plato.');
   }
 }
 
-export async function checkDishPortionsFeasibility(dishId: string): Promise<ActionResponse<DishStockFeasibility>> {
+export async function checkDishPortionsFeasibility(
+  dishId: string,
+): Promise<ActionResponse<DishStockFeasibility>> {
   try {
-    await requireKitchenAccess()
-    if (!dishId) {
-      return { success: false, error: 'ID de plato no proporcionado.' }
+    await requireKitchenAccess();
+    const validDishId = parseUuid(
+      dishId,
+      'ID de plato no proporcionado.',
+      'ID de plato no válido.',
+    );
+
+    const response = await recetasGetEscandallo(validDishId);
+    if (response.status !== 200) {
+      return {
+        success: false,
+        error: 'No se pudo calcular la disponibilidad de ingredientes para este plato.',
+      };
     }
 
-    const dishRow = await tablesDB.getRow({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_PLATOS_ID,
-      rowId: dishId,
-    })
-
-    const recipeRows = await tablesDB.listRows<RecipeRow>({
-      databaseId: DATABASE_ID,
-      tableId: TABLE_RECETAS_ID,
-      queries: [
-        Query.equal('plato_id', dishId),
-        Query.select(['*', 'ingrediente_id.*']),
-        Query.limit(100),
-      ],
-    })
-
-    if (recipeRows.total === 0) {
+    const { plato, lineas } = response.data;
+    if (lineas.length === 0) {
       return {
         success: true,
         data: {
-          platoId: dishId,
-          platoNombre: String((dishRow as Record<string, unknown>).nombre || 'Plato'),
+          platoId: validDishId,
+          platoNombre: plato.nombre || 'Plato',
           maxPortionsPossible: 0,
           ingredientsRequirement: [],
         },
-      }
+      };
     }
 
-    let minPortions = Infinity
-    const requirements: DishStockFeasibility['ingredientsRequirement'] = []
+    let minPortions = Infinity;
+    const requirements: DishStockFeasibility['ingredientsRequirement'] = [];
 
-    for (const row of recipeRows.rows) {
-      const parsed = parseRecipeRow(row)
-      const ing = parsed.ingrediente
+    for (const row of lineas) {
+      const parsed = toRecipeItem(row);
+      const ing = parsed.ingrediente;
 
-      const currentStock = ing ? ing.stock : 0
-      const stockUnit = ing ? ing.unidad_de_masa : parsed.unidad
-      const ingNombre = ing ? ing.nombre : parsed.ingrediente_id
+      const currentStock = ing ? ing.stock : 0;
+      const stockUnit = ing ? ing.unidad_de_masa : parsed.unidad;
+      const ingNombre = ing ? ing.nombre : parsed.ingrediente_id;
 
       const wastage = resolveEffectiveWastage(
         parsed.merma_ingrediente_receta,
-        ing?.merma_habitual ?? null
-      )
+        ing?.merma_habitual ?? null,
+      );
       const grossInRecipeUnit =
-        calculateGrossQuantity(parsed.cantidad, wastage.valid ? wastage.pct : 0) ?? parsed.cantidad
+        calculateGrossQuantity(parsed.cantidad, wastage.valid ? wastage.pct : 0) ?? parsed.cantidad;
 
-      const normalizedRequired = normalizeRecipeQuantity(grossInRecipeUnit, parsed.unidad, stockUnit)
-      const effectiveRequired = normalizedRequired !== null ? normalizedRequired : grossInRecipeUnit
+      const normalizedRequired = normalizeRecipeQuantity(grossInRecipeUnit, parsed.unidad, stockUnit);
+      const effectiveRequired = normalizedRequired !== null ? normalizedRequired : grossInRecipeUnit;
 
       const portionsCanMake =
-        effectiveRequired > 0 ? Math.floor(currentStock / effectiveRequired) : 0
+        effectiveRequired > 0 ? Math.floor(currentStock / effectiveRequired) : 0;
 
       if (portionsCanMake < minPortions) {
-        minPortions = portionsCanMake
+        minPortions = portionsCanMake;
       }
 
       requirements.push({
@@ -514,23 +447,22 @@ export async function checkDishPortionsFeasibility(dishId: string): Promise<Acti
         normalizedRequiredPerPortion: round4(effectiveRequired),
         portionsCanMake,
         hasSufficientStock: portionsCanMake > 0,
-      })
+      });
     }
 
     return {
       success: true,
       data: {
-        platoId: dishId,
-        platoNombre: String((dishRow as Record<string, unknown>).nombre || 'Plato'),
+        platoId: validDishId,
+        platoNombre: plato.nombre || 'Plato',
         maxPortionsPossible: Number.isFinite(minPortions) ? Math.max(0, minPortions) : 0,
         ingredientsRequirement: requirements,
       },
-    }
+    };
   } catch (error: unknown) {
-    console.error(`Error checking feasibility for dish ${dishId}:`, error)
-    return {
-      success: false,
-      error: 'No se pudo calcular la disponibilidad de ingredientes para este plato.',
-    }
+    return toErrorResponse(
+      error,
+      'No se pudo calcular la disponibilidad de ingredientes para este plato.',
+    );
   }
 }

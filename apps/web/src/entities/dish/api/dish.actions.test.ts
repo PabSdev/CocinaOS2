@@ -1,185 +1,105 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDish, deleteDish, getDishes, updateDish } from './dish.actions'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({
-  createRow: vi.fn(),
-  updateRow: vi.fn(),
-  getRow: vi.fn(),
-  listRows: vi.fn(),
-  deleteRow: vi.fn(),
-}))
+const api = vi.hoisted(() => ({
+  platosGetPlatos: vi.fn(),
+  platosCreatePlato: vi.fn(),
+  platosUpdatePlato: vi.fn(),
+  platosDeletePlato: vi.fn(),
+}));
+const revalidatePath = vi.hoisted(() => vi.fn());
 
-const mockStorage = vi.hoisted(() => ({
-  createFile: vi.fn(),
-  deleteFile: vi.fn(),
-}))
-
-const revalidatePath = vi.hoisted(() => vi.fn())
-
-vi.mock('next/cache', () => ({ revalidatePath }))
+vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('@/shared/api', () => ({
   requireKitchenAccess: vi.fn().mockResolvedValue(undefined),
-  tablesDB: db,
-  storage: mockStorage,
-  DATABASE_ID: 'db',
-  TABLE_PLATOS_ID: 'dishes',
-  BUCKET_FOTOS_ID: 'photos',
-  ID: { unique: () => 'dish' },
-  Query: { orderDesc: vi.fn(), limit: vi.fn() },
-}))
+  ...api,
+}));
 
-const dish = { $id: 'dish', nombre: 'Sopa', precio: 8, stock: 0, foto: null }
+import { createDish, deleteDish, getDishes, updateDish } from './dish.actions';
+
+const DISH_ID = '11111111-1111-4111-8111-111111111111';
+const sampleDto = {
+  id: DISH_ID,
+  nombre: 'Tortilla',
+  precio: '8.50',
+  stock: 10,
+  foto: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
 
 describe('dish.actions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    db.getRow.mockResolvedValue(dish)
-    db.createRow.mockImplementation(async ({ data }) => ({ ...dish, ...data }))
-    db.updateRow.mockImplementation(async ({ data }) => ({ ...dish, ...data }))
-    mockStorage.deleteFile.mockResolvedValue({})
-  })
+    vi.clearAllMocks();
+  });
 
-  describe('getDishes', () => {
-    it('recupera platos y formatea las propiedades', async () => {
-      db.listRows.mockResolvedValueOnce({
-        rows: [
-          { $id: 'd1', $createdAt: '2026-01-01', $updatedAt: '2026-01-01', nombre: 'Paella', precio: 14.50, foto: 'f1', stock: 5 },
-        ],
-      })
-
-      const res = await getDishes()
-
-      expect(res.success).toBe(true)
-      expect(res.data).toHaveLength(1)
-      expect(res.data![0].nombre).toBe('Paella')
-      expect(res.data![0].stock).toBe(5)
-      expect(res.data![0].precio).toBe('14.5')
-    })
-
-    it('devuelve error controlado si falla la conexión con Appwrite', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      db.listRows.mockRejectedValueOnce(new Error('Network error'))
-
-      const res = await getDishes()
-
-      expect(res.success).toBe(false)
-      expect(res.error).toBe('No se pudo cargar la lista de platos.')
-      consoleSpy.mockRestore()
-    })
-  })
-
-  describe('validaciones al crear platos', () => {
-    it('rechaza plato con nombre vacío', async () => {
-      const form = new FormData()
-      form.set('nombre', '   ')
-      const result = await createDish(form)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('El nombre del plato es obligatorio.')
-      expect(db.createRow).not.toHaveBeenCalled()
-    })
-
-    it('rechaza plato con stock no numérico o negativo', async () => {
-      const form = new FormData()
-      form.set('nombre', 'Gazpacho')
-      form.set('stock', '-5')
-      const result = await createDish(form)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('El stock debe ser un número igual o mayor a 0.')
-      expect(db.createRow).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('precio al guardar platos', () => {
-    it.each(['-1', 'abc', 'Infinity', 'NaN'])('rechaza el precio inválido %s antes de escribir', async (price) => {
-      const form = new FormData()
-      form.set('nombre', 'Sopa')
-      form.set('precio', price)
-      expect((await createDish(form)).success).toBe(false)
-      expect((await updateDish('dish', form)).success).toBe(false)
-      expect(db.createRow).not.toHaveBeenCalled()
-      expect(db.updateRow).not.toHaveBeenCalled()
-    })
-
-    it('mantiene el precio ausente como null al leer', async () => {
-      db.listRows.mockResolvedValueOnce({ rows: [{ ...dish, precio: null }] })
-      expect((await getDishes()).data?.[0].precio).toBeNull()
-    })
-
-    it.each([[undefined, 0], ['', 0], ['   ', 0], ['7,50', 7.5], ['7.50', 7.5]] as const)('crea el plato con precio %s', async (price, expected) => {
-      const form = new FormData()
-      form.set('nombre', 'Sopa')
-      if (price !== undefined) form.set('precio', price)
-      const result = await createDish(form)
-      expect(result.success).toBe(true)
-      expect(result.data?.precio).toBe(String(expected))
-      expect(db.createRow).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ precio: expected }),
-      }))
-      expect(revalidatePath).toHaveBeenCalledWith('/platos')
-    })
-
-    it.each([['', 0], ['   ', 0], ['7,50', 7.5], ['7.50', 7.5]] as const)('actualiza el plato con precio %s', async (price, expected) => {
-      const form = new FormData()
-      form.set('precio', price)
-      const result = await updateDish('dish', form)
-      expect(result.success).toBe(true)
-      expect(result.data?.precio).toBe(String(expected))
-      expect(db.updateRow).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ precio: expected }),
-      }))
-      expect(revalidatePath).toHaveBeenCalledWith('/platos')
-    })
-
-    it('conserva el precio si una actualización no incluye ese campo', async () => {
-      const result = await updateDish('dish', new FormData())
-      expect(result.data?.precio).toBe('8')
-      expect(db.updateRow).toHaveBeenCalledWith(expect.objectContaining({ data: {} }))
-    })
-  })
-
-  describe('deleteDish', () => {
-    it('rechaza id vacío', async () => {
-      const res = await deleteDish('')
-      expect(res.success).toBe(false)
-      expect(res.error).toBe('ID de plato no proporcionado.')
-    })
-
-    it('elimina la foto de almacenamiento si el plato tiene foto vinculada', async () => {
-      db.getRow.mockResolvedValueOnce({
-        $id: 'dish-with-photo',
-        foto: 'file-foto-123',
-      })
-      db.deleteRow.mockResolvedValueOnce({})
-
-      const res = await deleteDish('dish-with-photo')
-
-      expect(res.success).toBe(true)
-      expect(mockStorage.deleteFile).toHaveBeenCalledWith({
-        bucketId: 'photos',
-        fileId: 'file-foto-123',
-      })
-      expect(db.deleteRow).toHaveBeenCalledWith({
-        databaseId: 'db',
-        tableId: 'dishes',
-        rowId: 'dish-with-photo',
-      })
-      expect(revalidatePath).toHaveBeenCalledWith('/platos')
-    })
-
-    it('no intenta borrar foto si el plato no tiene foto', async () => {
-      db.getRow.mockResolvedValueOnce({
-        $id: 'dish-no-photo',
+  it('lista platos desde FastAPI', async () => {
+    api.platosGetPlatos.mockResolvedValueOnce({ status: 200, data: [sampleDto], headers: {} });
+    const res = await getDishes();
+    expect(res.success).toBe(true);
+    expect(res.data).toEqual([
+      {
+        $id: DISH_ID,
+        $createdAt: '2026-01-01T00:00:00Z',
+        $updatedAt: '2026-01-01T00:00:00Z',
+        nombre: 'Tortilla',
+        precio: '8.50',
         foto: null,
-      })
-      db.deleteRow.mockResolvedValueOnce({})
+        stock: 10,
+      },
+    ]);
+  });
 
-      const res = await deleteDish('dish-no-photo')
+  it('crea un plato válido y rechaza subida de archivos', async () => {
+    api.platosCreatePlato.mockResolvedValueOnce({ status: 201, data: sampleDto, headers: {} });
+    const form = new FormData();
+    form.set('nombre', 'Tortilla');
+    form.set('precio', '8,50 €');
+    form.set('stock', '10');
 
-      expect(res.success).toBe(true)
-      expect(mockStorage.deleteFile).not.toHaveBeenCalled()
-      expect(db.deleteRow).toHaveBeenCalledOnce()
-    })
-  })
-})
+    const res = await createDish(form);
+    expect(res.success).toBe(true);
+    expect(api.platosCreatePlato).toHaveBeenCalledWith({
+      nombre: 'Tortilla',
+      precio: 8.5,
+      stock: 10,
+      foto: null,
+    });
+    expect(revalidatePath).toHaveBeenCalledWith('/platos');
+    expect(revalidatePath).toHaveBeenCalledWith('/escandallos');
+
+    const formWithFile = new FormData();
+    formWithFile.set('nombre', 'Sopa');
+    formWithFile.set('precio', '5');
+    formWithFile.set('stock', '2');
+    formWithFile.set('foto', new File(['abc'], 'sopa.jpg', { type: 'image/jpeg' }));
+    const blocked = await createDish(formWithFile);
+    expect(blocked.success).toBe(false);
+    expect(blocked.error).toMatch(/deshabilitada/i);
+  });
+
+  it('valida UUID y actualiza parcialmente un plato', async () => {
+    const bad = await updateDish('not-a-uuid', new FormData());
+    expect(bad.success).toBe(false);
+    expect(api.platosUpdatePlato).not.toHaveBeenCalled();
+
+    api.platosUpdatePlato.mockResolvedValueOnce({
+      status: 200,
+      data: { ...sampleDto, precio: '9.00' },
+      headers: {},
+    });
+    const form = new FormData();
+    form.set('precio', '9');
+    form.set('removeFoto', 'true');
+    const res = await updateDish(DISH_ID, form);
+    expect(res.success).toBe(true);
+    expect(api.platosUpdatePlato).toHaveBeenCalledWith(DISH_ID, { precio: 9, foto: null });
+  });
+
+  it('elimina un plato por UUID', async () => {
+    expect((await deleteDish('')).success).toBe(false);
+    api.platosDeletePlato.mockResolvedValueOnce({ status: 204, data: undefined, headers: {} });
+    const res = await deleteDish(DISH_ID);
+    expect(res.success).toBe(true);
+    expect(api.platosDeletePlato).toHaveBeenCalledWith(DISH_ID);
+  });
+});

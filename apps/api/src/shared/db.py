@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
     """Clase base para los modelos de SQLAlchemy."""
 
+
 @cache
 def _session_factory() -> async_sessionmaker[AsyncSession]:
     engine = create_async_engine(environ["DATABASE_URL"])

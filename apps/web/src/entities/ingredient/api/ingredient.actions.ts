@@ -223,6 +223,12 @@ export async function deleteIngredient(id: string): Promise<ActionResponse<boole
     const validId = parseIngredientId(id);
 
     const response = await ingredientesDeleteIngrediente(validId);
+    if (response.status === 409) {
+      return {
+        success: false,
+        error: 'No se puede eliminar el ingrediente porque está asociado a una o más recetas.',
+      };
+    }
     if (response.status !== 204) {
       return { success: false, error: 'No se pudo eliminar el ingrediente.' };
     }

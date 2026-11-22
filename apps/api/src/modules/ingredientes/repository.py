@@ -55,6 +55,16 @@ class IngredienteRepository:
             _to_domain_model(ingrediente_orm) if ingrediente_orm is not None else None
         )
 
+    async def get_ingredientes_by_ids(
+        self, ingrediente_ids: set[UUID]
+    ) -> list[Ingrediente]:
+        if not ingrediente_ids:
+            return []
+        rows = await self._db.scalars(
+            select(IngredienteORM).where(IngredienteORM.id.in_(ingrediente_ids))
+        )
+        return [_to_domain_model(item) for item in rows]
+
     async def create_ingrediente(self, ingrediente: IngredienteCreate) -> Ingrediente:
         ingrediente_orm = IngredienteORM(
             nombre=ingrediente.nombre,

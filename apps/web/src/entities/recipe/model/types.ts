@@ -1,4 +1,6 @@
-export type RecipeUnit = 'G' | 'KG' | 'ML' | 'L'
+import type { UnidadDeMasa } from '@/shared/api'
+
+export type RecipeUnit = UnidadDeMasa
 
 export interface RecipeItem {
   $id: string

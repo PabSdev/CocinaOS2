@@ -1,8 +1,15 @@
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
 from shared.db import unit_of_work
 
-from .ingrediente import Ingrediente, IngredienteNotFoundError, UnidadDeMasa
+from .ingrediente import (
+    Ingrediente,
+    IngredienteEnUsoError,
+    IngredienteNotFoundError,
+    UnidadDeMasa,
+)
 from .repository import IngredienteRepository
 from .schema import IngredienteCreate, IngredienteUpdate
 
@@ -48,9 +55,14 @@ class IngredienteService:
         return actualizado
 
     async def delete_ingrediente(self, ingrediente_id: UUID) -> None:
-        async with unit_of_work() as session:
-            eliminado = await IngredienteRepository(session).delete_ingrediente(
-                ingrediente_id
-            )
+        try:
+            async with unit_of_work() as session:
+                eliminado = await IngredienteRepository(session).delete_ingrediente(
+                    ingrediente_id
+                )
+        except IntegrityError as exc:
+            if getattr(exc.orig, "sqlstate", None) == "23503":
+                raise IngredienteEnUsoError(ingrediente_id) from exc
+            raise
         if not eliminado:
             raise IngredienteNotFoundError(ingrediente_id)

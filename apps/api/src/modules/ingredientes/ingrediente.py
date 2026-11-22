@@ -27,3 +27,7 @@ class Ingrediente:
 
 class IngredienteNotFoundError(Exception):
     """Se lanza cuando no se encuentra el ingrediente solicitado."""
+
+
+class IngredienteEnUsoError(Exception):
+    """Se lanza al intentar eliminar un ingrediente referenciado por una receta."""

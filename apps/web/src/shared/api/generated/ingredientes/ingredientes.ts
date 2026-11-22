@@ -219,6 +219,11 @@ export type ingredientesDeleteIngredienteResponse204 = {
   status: 204
 }
 
+export type ingredientesDeleteIngredienteResponse409 = {
+  data: void
+  status: 409
+}
+
 export type ingredientesDeleteIngredienteResponse422 = {
   data: HTTPValidationError
   status: 422
@@ -227,7 +232,7 @@ export type ingredientesDeleteIngredienteResponse422 = {
 export type ingredientesDeleteIngredienteResponseSuccess = (ingredientesDeleteIngredienteResponse204) & {
   headers: Record<string, string>;
 };
-export type ingredientesDeleteIngredienteResponseError = (ingredientesDeleteIngredienteResponse422) & {
+export type ingredientesDeleteIngredienteResponseError = (ingredientesDeleteIngredienteResponse409 | ingredientesDeleteIngredienteResponse422) & {
   headers: Record<string, string>;
 };
 

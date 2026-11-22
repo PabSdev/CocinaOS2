@@ -3,13 +3,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .ingrediente import Ingrediente, IngredienteNotFoundError
+from .ingrediente import Ingrediente, IngredienteEnUsoError, IngredienteNotFoundError
 from .schema import IngredienteCreate, IngredienteResponse, IngredienteUpdate
 from .service import IngredienteService
 
 router = APIRouter(prefix="/ingredientes", tags=["ingredientes"])
 
 INGREDIENTE_NO_ENCONTRADO = "Ingrediente no encontrado"
+INGREDIENTE_EN_USO = (
+    "No se puede eliminar el ingrediente porque está asociado a una o más recetas."
+)
 RESPUESTA_404: dict[int | str, dict[str, object]] = {
     status.HTTP_404_NOT_FOUND: {
         "description": INGREDIENTE_NO_ENCONTRADO,
@@ -17,6 +20,10 @@ RESPUESTA_404: dict[int | str, dict[str, object]] = {
             "application/json": {"example": {"detail": INGREDIENTE_NO_ENCONTRADO}}
         },
     }
+}
+RESPUESTA_DELETE: dict[int | str, dict[str, object]] = {
+    **RESPUESTA_404,
+    status.HTTP_409_CONFLICT: {"description": INGREDIENTE_EN_USO},
 }
 
 
@@ -90,7 +97,7 @@ async def update_ingrediente(
 @router.delete(
     "/{ingrediente_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=RESPUESTA_404,
+    responses=RESPUESTA_DELETE,
 )
 async def delete_ingrediente(
     service: ServiceDep,
@@ -103,3 +110,5 @@ async def delete_ingrediente(
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, INGREDIENTE_NO_ENCONTRADO
         ) from exc
+    except IngredienteEnUsoError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, INGREDIENTE_EN_USO) from exc

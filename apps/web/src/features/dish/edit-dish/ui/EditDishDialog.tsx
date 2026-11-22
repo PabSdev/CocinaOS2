@@ -165,28 +165,25 @@ export function EditDishDialog({
       formData.append('precio', precio.trim())
       formData.append('stock', numericStock.toString())
 
-      if (photoFile) {
-        formData.append('foto', photoFile)
-      } else if (removeExistingPhoto) {
+      if (removeExistingPhoto) {
         formData.append('removeFoto', 'true')
       }
 
-      const [dishRes, recipeRes] = await Promise.all([
-        updateDish(dish.$id, formData),
-        setDishRecipe(dish.$id, recipeValidation.payload),
-      ])
-
-      if (dishRes.success && dishRes.data) {
-        if (!recipeRes.success) {
-          toast.error(recipeRes.error || 'No se pudo actualizar la receta del plato.')
-          return
-        }
-        toast.success(`Plato "${dishRes.data.nombre}" y su receta actualizados.`)
-        onUpdated?.(dishRes.data, recipeRes.data ?? [])
-        onOpenChange(false)
-      } else {
+      const dishRes = await updateDish(dish.$id, formData)
+      if (!dishRes.success || !dishRes.data) {
         toast.error(dishRes.error || 'No se pudo actualizar el plato.')
+        return
       }
+
+      const recipeRes = await setDishRecipe(dish.$id, recipeValidation.payload)
+      if (!recipeRes.success) {
+        toast.error(recipeRes.error || 'No se pudo actualizar la receta del plato.')
+        return
+      }
+
+      toast.success(`Plato "${dishRes.data.nombre}" y su receta actualizados.`)
+      onUpdated?.(dishRes.data, recipeRes.data ?? [])
+      onOpenChange(false)
     } catch {
       toast.error('Error al actualizar el plato.')
     } finally {
@@ -315,50 +312,13 @@ export function EditDishDialog({
                 </div>
               </div>
 
-              {/* Fotografía */}
+              {/* Fotografía (subida deshabilitada temporalmente) */}
               <div className="space-y-1.5">
                 <span className="block text-xs font-semibold text-[#142238]">
                   Fotografía del plato
                 </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="edit-dish-photo"
-                  name="foto"
-                  accept="image/png, image/jpeg, image/jpg, image/webp"
-                  onChange={handlePhotoSelect}
-                  className="sr-only"
-                  disabled={isSubmitting}
-                />
 
-                {previewUrl ? (
-                  <div className="relative overflow-hidden rounded-2xl border border-[#cbd7e3] bg-[#f8fafc]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={previewUrl}
-                      alt="Nueva foto seleccionada"
-                      className="h-40 w-full object-cover"
-                    />
-                    <div className="absolute right-2 top-2 flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="rounded-full bg-white/90 p-1.5 text-xs text-[#142238] shadow-sm backdrop-blur-xs hover:bg-white cursor-pointer"
-                        title="Cambiar imagen"
-                      >
-                        <HugeiconsIcon icon={ImageAdd01Icon} className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleClearSelectedPhoto}
-                        className="rounded-full bg-white/90 p-1.5 text-xs text-[#962b29] shadow-sm backdrop-blur-xs hover:bg-white cursor-pointer"
-                        title="Descartar cambio de imagen"
-                      >
-                        <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : hasCurrentPhoto ? (
+                {hasCurrentPhoto ? (
                   <div className="relative overflow-hidden rounded-2xl border border-[#cbd7e3] bg-[#f8fafc]">
                     <div className="h-40 w-full">
                       <DishThumbnail
@@ -370,14 +330,6 @@ export function EditDishDialog({
                     <div className="absolute right-2 top-2 flex gap-1">
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="rounded-full bg-white/90 p-1.5 text-xs text-[#142238] shadow-sm backdrop-blur-xs hover:bg-white cursor-pointer"
-                        title="Reemplazar foto actual"
-                      >
-                        <HugeiconsIcon icon={ImageAdd01Icon} className="size-4" />
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setRemoveExistingPhoto(true)}
                         className="rounded-full bg-white/90 p-1.5 text-xs text-[#962b29] shadow-sm backdrop-blur-xs hover:bg-white cursor-pointer"
                         title="Eliminar foto actual"
@@ -387,22 +339,14 @@ export function EditDishDialog({
                     </div>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isSubmitting}
-                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#cbd7e3] bg-[#f8fafc] p-6 text-center transition-colors hover:border-[#8ca1b8] hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#112747]"
-                  >
-                    <div className="flex size-10 items-center justify-center rounded-full bg-white text-[#55667e] shadow-2xs">
-                      <HugeiconsIcon icon={ImageAdd01Icon} className="size-5" />
+                  <div className="flex w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#cbd7e3] bg-[#f8fafc] p-5 text-center">
+                    <div className="flex size-9 items-center justify-center rounded-full bg-white text-[#55667e] shadow-2xs">
+                      <HugeiconsIcon icon={ImageAdd01Icon} className="size-4.5" />
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-[#142238]">
-                        Haz clic para subir una foto
-                      </p>
-                      <p className="text-[11px] text-[#55667e]">JPG, PNG o WEBP (máx. 10 MB)</p>
-                    </div>
-                  </button>
+                    <p className="text-xs font-medium text-[#55667e]">
+                      La subida de fotos está deshabilitada temporalmente.
+                    </p>
+                  </div>
                 )}
               </div>
             </TabsContent>

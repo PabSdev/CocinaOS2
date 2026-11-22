@@ -18,7 +18,16 @@ export function DishThumbnail({
   size = 'md',
   className = '',
 }: DishThumbnailProps) {
-  const [hasError, setHasError] = useState(false)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+
+  const trimmedFoto = fotoId?.trim()
+  const imageSrc = trimmedFoto
+    ? trimmedFoto.startsWith('http://') ||
+      trimmedFoto.startsWith('https://') ||
+      (trimmedFoto.startsWith('/') && !trimmedFoto.startsWith('//'))
+      ? trimmedFoto
+      : `/api/storage/dishes/${trimmedFoto}`
+    : null
 
   const sizeClasses = {
     sm: 'size-10 rounded-xl',
@@ -32,17 +41,17 @@ export function DishThumbnail({
     lg: 'size-9',
   }[size]
 
-  if (fotoId && !hasError) {
+  if (imageSrc && failedSrc !== imageSrc) {
     return (
       <div
         className={`relative shrink-0 overflow-hidden border border-[#dce3e9] bg-[#eff4f8] shadow-2xs ${sizeClasses} ${className}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`/api/storage/dishes/${fotoId}`}
+          src={imageSrc}
           alt={alt}
           loading="lazy"
-          onError={() => setHasError(true)}
+          onError={() => setFailedSrc(imageSrc)}
           className="size-full object-cover object-center"
         />
       </div>

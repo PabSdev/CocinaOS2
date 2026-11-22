@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
 from modules.ingredientes.router import router as ingredientes_router
+from modules.platos.router import router as platos_router
 from modules.productos.router import router as productos_router
+from modules.recetas.router import router as recetas_router
 
 _ = load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -22,4 +24,6 @@ app = FastAPI(
 )
 
 app.include_router(ingredientes_router)
+app.include_router(platos_router)
 app.include_router(productos_router)
+app.include_router(recetas_router)
